@@ -1,7 +1,7 @@
 ---
 title: 'Statistical Methods in Epidemiology'
 subtitle: "Lab 2"
-output: html_document
+output: github_document
 date: '14 October 2020'
 editor_options: 
   chunk_output_type: console
