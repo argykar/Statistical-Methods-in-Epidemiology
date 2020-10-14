@@ -36,9 +36,6 @@ klippy::klippy(position = c('top', 'right'))
 ***
 
 ```{r, echo = TRUE, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
-library(biostat3)
-library(tidyverse)
-library(haven)
 diet <- read_dta('diet.dta')
 ```
 
