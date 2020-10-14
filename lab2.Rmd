@@ -12,31 +12,37 @@ bibliography: references.bib
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+```{r klippy, echo = FALSE, include = TRUE}
+klippy::klippy(position = c('top', 'right'))
+```
 
-Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με το βιβλίο [R 4 Data Science](https://r4ds.had.co.nz/) [@R4DS]
+
+Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με τις σημειώσεις του STATA (για τον παραλληλισμό των προγραμμάτων) και το βιβλίο [R 4 Data Science](https://r4ds.had.co.nz/) [@R4DS] 
 
 ***
 
 Το παρακάτω θα εγκαταστήσει και θα φορτώσει αυτόματα τις βιβλιοθήκες στην R σε περίπτωση που δεν τις έχετε.
 Αν τις έχετε, αγνοήστε το και φορτώστε κανονικά με το `library()`.
 
-```{r, warning = FALSE, echo = TRUE, message = FALSE}
- packages <- c('biostat3', 'tidyverse')
- if (require(packages) == FALSE) {
-   install.packages(packages, repos = "http://cran.us.r-project.org")
- }
+# ```{r, warning = FALSE, echo = TRUE, message = FALSE}
+#  packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate')
+#  if (require(packages) == FALSE) {
+#    install.packages(packages, repos = "http://cran.us.r-project.org")
+#  }
 
- lapply(packages, require, character.only = TRUE)
-```
+#  lapply(packages, require, character.only = TRUE)
+# ```
 
 ***
 
 ```{r, echo = TRUE, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
 library(biostat3)
 library(tidyverse)
-
-diet <- biostat3::diet
+library(haven)
+diet <- read_dta('diet.dta')
 ```
+
+## Ερώτημα 1
 
 Η εντολή `str()` λειτουργεί ακριβώς όπως η **describe** του STATA.
 ```{r, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE, echo = TRUE}
@@ -67,4 +73,129 @@ diet %>%
 * συνοψίζουμε την πληροφορία (`summarise()`) και στη συνέχεια ζητάμε τις συχνότητες της κατηγορικής (`n()`), ενώ **count** είναι το όνομα της μεταβλητής που θα εμφανιστεί στο output.
 * στη συνέχεια, με την `mutate()` δημιουργούμε δύο νέες μεταβλητές (ποσοστό κατηγοριών από το σύνολο, αθροιστική συχνότητα, `cumsum()`)
 
+## Ερώτημα 2
+
+Σε περίπτωση που θέλουμε να δούμε τα δεδομένα μας, είτε για λόγους δημιουργίας νέων μεταβλητών, είτε για λόγους τροποποίησης των ήδη υπάρχοντων, μπορεί να γίνει με την `View()` για όλο το dataset ή την `head()` για 5 γραμμές ή περισσότερες.
+
+Στο εργαστήριο χρησιμοποιείται το **list** του STATA για τις 20 πρώτες γραμμές.
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+head(diet, n = 20)
+```
+
+Αν θέλουμε συγκεκριμένες μεταβλητές του data.frame μπορούμε να τις προσδιορίσουμε μέσω της `select()`
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet %>%
+  select(id, doe, dox, chd) %>%
+  head(20)
+```
+
+
+## Ερώτημα 3
+
+Δημιουργούμε την μεταβλητή time-since-entry (**tse**) [in years (365.25)] και την **failure**, η οποία δεν έχει καμία διαφορά με την **chd**. Γίνεται χρήση της `ifelse()` η οποία έχει ως πρώτο όρισμα ένα λογικό επιχείρημα, ως δεύτερο μία τιμή σε περίπτωση που το λογικό επιχείρημα είναι *YES* και ως τρίτη μία τιμή σε περίπτωση που είναι *NO*.
+
+Πιο συγκεκριμένα αν **chd** είναι 1, βάλε στην **failure** 1, διαφορετικά 0.
+
+Στη συνέχεια, αθροίζουμε τις αποτυχίες με την `summarise(sum())`
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet %>%
+  mutate(tse = (dox - doe) / 365.25,
+         failure = ifelse(chd == 'otherwise', 0, 1)) %>% 
+  summarise(failures = sum(failure))
+
+dim(diet) # μας δίνει γραμμές και στήλες του data.frame
+```
+
+Σε αντίθεση με το STATA, στην R δεν χρείαζεται να προσδιορίσουμε από πριν τι είδους δεδομένα έχουμε. Οτιδήποτε χρειαστεί το δηλώνουμε μέσα στην συνάρτηση που θα χρησιμοποιήσουμε για το μοντέλο μας ή ό,τι είναι αυτό που θέλουμε να τρέξουμε, αρκεί βέβαια να έχουμε καθορίσει τον σωστό τύπο μεταβλητών (integer, factor, ...)
+
+_Total time at risk_
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet %>%
+  mutate(tse = (dox - doe) / 365.25) %>% 
+  summarise(time_at_risk = sum(tse))
+```
+
+ΣΗΜΕΙΩΣΗ: δεν χρειάζεται κάθε φορά να δημιουργούμε την νέα μεταβλητή, μπορούμε να την κάνουμε assign π.χ.
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet_tse <- diet %>%
+  mutate(tse = lubridate::time_length(difftime(diet$dox, diet$doe), 'years'))
+
+#Time difference (entry - exit) in years
+diet_tse$tse
+```
+
+Όσο περισσότερο γράφετε τόσο συνηθίζετε στο σκεπτικό του pipe. Εναλλατικά, μπορεί κανείς να χρησιμοποιήσει base R.
+
+
+## Ερώτημα 4
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet_tse %>%
+  mutate(failure = ifelse(chd == 'otherwise', 0, 1),
+         '_t0' = 0,
+         '_t' = tse,
+         '_d' = failure,
+         '_st' = 1) %>%
+  select(id, '_t0', '_t', '_d', '_st') %>%
+  head(20)
+```
+
+## Ερώτημα 6
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet %>%
+  group_by(hieng) %>%
+  summarise(count = n()) %>%
+  mutate(percent = count * 100 / sum(count),
+         cum = cumsum(percent))
+```
+
+## Ερώτημα 7
+
+Με την `filter()` επιλέγουμε μόνο τους cases, αφήνοντας απέξω τους chd == 'otherwise'
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet_tse %>%
+  filter(chd == 'chd') %>%
+  group_by(hieng) %>%
+  summarise(D = n(), Y = sum(diet_tse$tse) / 1000, rate = D / Y)
+```
+
+## Ερώτημα 8
+
+Δημιουργούμε την μεταβλητή **htgrp**.
+
+Ο συλλογισμός για το παρακάτω:
+
+* `filter()` : αφήνουμε απέξω τις ΝΑ τιμές
+* `mutate()` : δημιουργούμε την νέα μεταβλητή μας
+  + `case_when()` : μετατρέπει την συνεχή σε κατηγορική μεταβλητή
+  + `between()` : μας επιστρέφει TRUE/FALSE, αν η τιμή που είναι στο πρώτο όρισμα βρίσκεται μέσα στο διάστημα (δεύτερο, τρίτο όρισμα)
+* `group_by()` : ομαδοποίηση με βάση την κατηγορική που φτιάξαμε
+* `summarise()` : συνοψίζουμε με βάση τις συχνότητες της κάθε κατηγορίας
+* `mutate()` : (προαιρετικό) φτιάχνουμε και τις υπόλοιπες στήλες (το δίνει το output του STATA, γι'αυτό και το κάνουμε)
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet_tse %>%
+  filter(!is.na(height)) %>%
+  mutate(htgrp = case_when(
+    between(height, min(diet_tse$height, na.rm = TRUE), 169.999) ~ 0,
+    between(height, 170,174.999) ~ 1,
+    between(height, 175, 179.999) ~ 2,
+    between(height, 180, 195) ~ 3)
+    ) %>%
+  group_by(htgrp) %>%
+  summarise(count = n()) %>%
+  mutate(percent = count * 100 / sum(count),
+         cum = cumsum(percent))
+```
+
+
+## ΙΙ. Rate Ratios.
+
+
+***
 ## References
