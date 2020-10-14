@@ -1,0 +1,130 @@
+---
+title: "Statistical Methods in Epidemiology"
+author: "Achilleas Stamoulopoulos"
+date: "10/13/2020"
+output: html_document
+---
+# Lab 1
+## Objectives
+
+The aim of this practical is to display how main measures of disease and effect used in epidemiology are calculated in R.
+
+First, let's load all the libraries that we are going to use. Make sure that you have already installed the respective R packages.
+
+```{r message = FALSE, warning = FALSE}
+library(tidyverse)
+library(gmodels)
+library(epiR)
+```
+
+
+## I. Analysis of cohort studies
+
+For this part of the practical we will use data from the Whitehall study. We'll store our data in a dataframe called **wha_data** and create factors for all the categorical variables.
+
+```{r}
+wha_data <- read.table("Data\\Wha.txt", header = TRUE)
+wha_data$group <- factor(wha_data$group, levels = c("1", "2", "3"))
+wha_data$work <- factor(wha_data$work, levels = c("high", "low"))
+wha_data$smok <- factor(wha_data$smok, levels = c("0", "1", "2", "3"), labels = c("never", "former", "0-19", ">= 20"))
+wha_data$all <- factor(wha_data$all, levels = c("1", "0"), labels = c("died", "alive"))
+wha_data$IHD <- factor(wha_data$IHD, levels = c("1", "0"), labels = c("IHD", "Other_cause"))
+
+```
+
+Using the `` `r "\u0060r CrossTable\u0060"` `` function from package **gmodels** we can examine the distribution of categorical variables, as well as create contingency tables to examine the relationship between two categorical variables.
+
+```{r}
+CrossTable(wha_data$all)
+CrossTable(wha_data$IHD, wha_data$all, expected = FALSE, prop.r = TRUE, prop.c = TRUE, prop.t = FALSE, prop.chisq = FALSE, dnn = c("Cause of death", "Status"))
+```
+
+### Risk Analysis
+
+
+In order to assess the risk of death according to working group and calculate the risk ratio of the high grade vs. low grade working groups (as well as some other probably useful measures), we'll use the `` `r "\u0060r epi.2by2\u0060"` `` function from **epiR** package using the argument **method = "cohort.count"**. Note that this function accepts an object of class *table*, which means that we have to create it first in order to proceed (in this case we need a contingency table of status(**variable all**) to working group(**variable work**)) and furthermore we need to specify whether the outcome variable lies on rows or columns(argument **outcome = "as.rows"** or **outcome = "as.columns"**).
+
+```{r}
+table1 <- with(wha_data, table(all, work))
+epi.2by2(table1, method = "cohort.count", outcome = "as.rows")
+```
+
+### Incidence Rate Analysis
+
+
+Due to the fact that we have access to the number of years that every person lived (variable **y**), we can examine the effect of grade of work on mortality through an incidence rate analysis. For this purpose, we need the total number of deaths and the total person-years in both working groups (high and low). We can extract this information from our initial dataset with the aid of tools from **Tidyverse** package.
+
+```{r message = FALSE, warning = FALSE}
+by_work <- wha_data %>%
+  group_by(work) %>%
+  summarise(Cases = sum(all == "died"), Person_years = sum(y))
+by_work
+```
+
+To perform the incidence rate analysis, again we are going to use `` `r "\u0060r epi.2by2\u0060"` `` function. However, this time the argument **method = "cohort.time"** has to be specified. Also, in this case the function accepts a *table* with the number of cases in the first column, the number of person-years in the second and the rows grouped by the exposure (here variable **work**). Since **py_data** is an object of class *data.frame* we have to extract its last two columns (because we just want the number of cases and the person-years) and create a *table* from them before we proceed to the incidence rate analysis.
+
+```{r message = FALSE, warning = FALSE}
+table2 <- as.table(as.matrix(by_work[,2:3]))
+epi.2by2(table2, method = "cohort.time")
+```
+
+
+Afterwards, we'd like to examine the effect of smoking status (variable **smok**) on the risk of death. Smoking status is a categorical variable with 4 levels. For exposures with more than 2 levels, we can manual calculate the point estimates for incidence rates for all the levels. In order to have a picture of how rates are modified among levels of smoking status and if they have a statistically significant difference we will create a plot of these point estimates along with their 95% confidence limits. To calculate the confidence limits, we will use the normal approximation to the distribution of log of rates.
+
+```{r message = FALSE, warning = FALSE}
+by_smok <- wha_data %>%
+  group_by(smok) %>%
+  summarise(Cases = sum(all == "died"), Person_years = sum(y)) %>% 
+  mutate(Inc_Rate = 1000 * Cases/Person_years, 
+         lower_l = Inc_Rate/exp(1.96 * sqrt(1/Cases)), 
+         upper_l = Inc_Rate*exp(1.96 * sqrt(1/ Cases)))
+
+by_smok
+
+ggplot(by_smok, aes(smok, Inc_Rate)) + 
+  geom_point(size = 3) + 
+  geom_errorbar(aes(ymin = lower_l, ymax = upper_l), color = "red", width = 0.5) +
+  ylab("Incidence Rates by 1000 person-years") +
+  xlab("Smoking")
+```
+
+
+## II. Analysis of case-control studies
+
+For this part of the practical we will use data from the case-control study of HIV infection in Mwanza, Tanzania. We'll store our data in a dataframe called **mw_data** and create factors for our categorical variables. Note that variable **skin** has one missing value (9) and it will be converted to *NA* by not including it to the levels of the factor.
+
+```{r}
+mw_data <- read.table("Data\\mwanza.txt", header = TRUE)
+mw_data$case <- factor(mw_data$case, levels = c("1", "0"), labels = c("Cases", "Controls"))
+mw_data$ed <- factor(mw_data$ed, levels = c("0", "1", "2", "3"), labels = c("none", "elementary", "medium", "high"))
+mw_data$skin <- factor(mw_data$skin, levels = c("1", "0"), labels = c("yes", "no"))
+mw_data$work <- factor(mw_data$work, levels = c("1", "2"))
+```
+
+
+First, we'll examine the difference in education levels in cases and controls.
+
+```{r}
+with(mw_data, CrossTable(case, ed, expected = FALSE, prop.r = TRUE, prop.c = TRUE, prop.t = FALSE, prop.chisq = FALSE, dnn = c("HIV", "Education")))
+```
+
+Then, we'll calculate the odds of HIV according to education level. As education has more than 2 levels, we'll do it manually. We'll also calculate 95% confidence limits for odds based on normal approximation of log of odds.
+
+```{r message = FALSE, warning = FALSE}
+by_educ <- mw_data %>% 
+  group_by(ed) %>% 
+  summarise(Cases = sum(case == "Cases"), Controls = sum(case == "Controls")) %>% 
+  mutate(Odds = Cases/Controls, 
+         lower_l = Odds/exp(1.96*sqrt((1/Cases)+(1/Controls))), 
+         upper_l = Odds*exp(1.96*sqrt((1/Cases) + (1/Controls))))
+
+by_educ
+```
+
+Finally, we'd like to examine whether the odds of HIV vary according to whether the woman has skin incisions or tattoos(variable **skin**). Skin has two levels, so, once more, `` `r "\u0060r epi.2by2\u0060"` `` will be our main tool. Since our data are from a case-control study, we need to specify the argument **method = "case.control"**. We remind that this function accepts an object of class *table*.
+
+```{r}
+table3 <- with(mw_data, table(case, skin))
+epi.2by2(table3, method = "case.control", outcome = "as.rows")
+```
+

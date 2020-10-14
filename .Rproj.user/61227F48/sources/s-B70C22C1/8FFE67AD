@@ -1,0 +1,27 @@
+{
+    "id": "8FFE67AD",
+    "path": "~/Statistical Methods in Epidemiology/lab2.Rmd",
+    "project_path": "lab2.Rmd",
+    "type": "r_markdown",
+    "hash": "1922253048",
+    "contents": "",
+    "dirty": true,
+    "created": 1602664042851.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "cursorPosition": "171,0",
+        "scrollLine": "161",
+        "last_setup_crc32": "",
+        "chunk_output_type": "console"
+    },
+    "folds": "0|3|8|0|\n10|27|12|0|\n14|43|16|0|\n30|4|31|0|\n",
+    "lastKnownWriteTime": 1602715711,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1602715711356,
+    "read_only": false,
+    "read_only_alternatives": []
+}

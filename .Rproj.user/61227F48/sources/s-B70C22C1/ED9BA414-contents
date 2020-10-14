@@ -1,0 +1,63 @@
+# parakatw einai ola ta paketa pou tha xreiasteis den xreiazetai na kaneis tipota
+# apla trekse tis entoles tha ta kanei mono tou egkatastasi 
+# kai tha ta fortwsei sto telos
+
+packages <- c('officer', 'flextable', 'readxl', 'ggplot2',
+              'dplyr', 'GGally', 'haven', 'pacman')
+
+if (require(packages) == FALSE) {
+  install.packages(packages)
+}
+lapply(packages, require, character.only = TRUE)
+# GGally einai vivliothiki gia wraia diagrammata me correlation matrix
+
+# an einai csv
+read.csv()
+# an einai xls/xlsx
+read_xls()
+read_xlsx()
+# an einai stata
+read_dta()
+# an einai sas
+read_sas()
+
+# oson afora pinaka sisxetisis 
+# akolouthei paradeigma
+x <- rnorm(25)
+y <- rnorm(25)
+z <- rnorm(25)
+k <- rnorm(25)
+
+# me tin entoli cor() i opoia dexetai dataframe i matrix
+mat <- data.frame(x, y, z, k)
+corr_matrix <- cor(mat) %>%
+  as.data.frame() # tha pareis nxn pinaka (dataframe), opou n oi metavlites sou (profanws)
+
+
+# Correlation between variables with complete obs (ennoei oxi NA times)
+mat %>%
+  select(x, y, z, k) %>% # vazeis tis metavlites pou se endiaferoun
+  cor(use = 'complete.obs')
+
+# Correlation visualisation
+mat %>%
+  select(everything()) %>% # everything() = kathe metavliti tou dataframe sou
+  var(use = 'complete.obs') %>%
+  cov2cor() %>% # dinei ton pinaka correlation meta apo var-covar pinaka
+  ggcorr(label = T,
+         label_alpha = F) # GGally einai vivliothiki gia wraia diagrammata me correlation matrix
+
+
+
+# export se word
+save_as_docx('Correlation matrix' = autofit(flextable(corr_matrix)), 
+             path = 'C:/Users/{vale to onoma tou pc}/Desktop/example.docx')
+
+# flextable() tha sou dimiourgisei ton pinaka pio wraio
+# autofit tha to fitarei stin selida
+
+### MESA APO TO MARKDOWN MPOREIS NA GRAPSEIS OLOKLIRO TO WORD ARXEIO
+### AUTO POU THELW NA PW EINAI OTI DEN XREIAZETAI KAN NA ANOIKSEIS TO WORD
+### KAI NA FTIAXEIS AKRIVWS AKRIVWS AUTO POU THES KAI ME TON KWDIKA KAI ME OLA
+
+### AN THELEIS TO SK MPOROUME NA TO KANOUME MAZI ME FAKE DATA H WHATEVER
