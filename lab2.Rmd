@@ -1,0 +1,78 @@
+---
+title: 'Statistical Methods in Epidemiology'
+subtitle: "Lab 2"
+output: html_document
+date: '14 October 2020'
+editor_options: 
+  chunk_output_type: console
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με το βιβλίο [R 4 Data Science](https://r4ds.had.co.nz/) [@R4DS]
+
+***
+
+Το παρακάτω θα εγκαταστήσει και θα φορτώσει αυτόματα τις βιβλιοθήκες στην R σε περίπτωση που δεν τις έχετε.
+Αν τις έχετε, αγνοήστε το και φορτώστε κανονικά με το `library()`.
+
+# ```{r, warning = FALSE, echo = FALSE, message = FALSE}
+# packages <- c('biostat3', 'tidyverse')
+# if (require(packages) == FALSE) {
+#   install.packages(packages, repos = "http://cran.us.r-project.org")
+# }
+ 
+# lapply(packages, require, character.only = TRUE)
+# ```
+
+***
+
+```{r, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
+library(biostat3)
+library(tidyverse)
+
+diet <- biostat3::diet
+```
+
+Η εντολή `str()` λειτουργεί ακριβώς όπως η **describe** του STATA.
+```{r, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE, echo = TRUE}
+str(diet)
+```
+
+Η μεταβλητή *chd* του dataset είναι ακέραιος (0, 1), επομένως θα την μετατρέψουμε σε κατηγορική. Με την `factor()` παίρνουμε το ζητούμενο. Στη συνέχεια, θα ορίσουμε τις κατηγορίες της, με την `levels()`.
+```{r, echo = TRUE}
+diet$chd <- factor(diet$chd)
+levels(diet$chd) <- c('otherwise', 'chd')
+```
+
+Θα παρατηρήσετε πως συχνά γίνεται χρήση του pipe (`%>%`). Το pipe βρίσκεται στην βιβλιοθήκη **magrittr** και χρησιμοποιήτε για λόγους ευκολίας, καθώς η R χρησιμοποιείται από κάθε είδους επιστήμονα και όχι μόνο από προγραμματιστές. Το pipe περιλαμβάνεται στο πακέτο **tidyverse** και σε όλα τα συναφή.
+
+Στο STATA, με την **tab chd** λαμβάνουμε περιγραφικά για την κατηγορική *chd*. Παρακάτω, με την χρήση του pipe, παίρνουμε ακριβώς τον ίδιο πίνακα.
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet %>%
+  group_by(chd) %>%
+  summarise(count = n()) %>%
+  mutate(percent = count * 100 / sum(count),
+         cum = cumsum(percent))
+```
+
+Για να γίνει πιο κατανοητή η χρήση του pipe:
+
+* από το dataset μας (*diet*), γκρούπαρε με βάση το *chd* (`group_by()`)
+* συνοψίζουμε την πληροφορία (`summarise()`) και στη συνέχεια ζητάμε τις συχνότητες της κατηγορικής (`n()`), ενώ **count** είναι το όνομα της μεταβλητής που θα εμφανιστεί στο output.
+* στη συνέχεια, με την `mutate()` δημιουργούμε δύο νέες μεταβλητές (ποσοστό κατηγοριών από το σύνολο, αθροιστική συχνότητα, `cumsum()`)
+
+## References
+  
+
+
+
+
+
+
+
