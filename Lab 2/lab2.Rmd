@@ -1,11 +1,12 @@
 ---
 title: 'Statistical Methods in Epidemiology'
 subtitle: "Lab 2"
-output: html_document
+output: rmarkdown::github_document
 date: '14 October 2020'
 editor_options: 
   chunk_output_type: console
 bibliography: references.bib
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -24,14 +25,14 @@ klippy::klippy(position = c('top', 'right'))
 Το παρακάτω θα εγκαταστήσει και θα φορτώσει αυτόματα τις βιβλιοθήκες στην R σε περίπτωση που δεν τις έχετε.
 Αν τις έχετε, αγνοήστε το και φορτώστε κανονικά με το `library()`.
 
-# ```{r, warning = FALSE, echo = TRUE, message = FALSE}
-#  packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate')
-#  if (require(packages) == FALSE) {
-#    install.packages(packages, repos = "http://cran.us.r-project.org")
-#  }
+```{r, warning = FALSE, echo = TRUE, message = FALSE}
+  packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate')
+  if (require(packages) == FALSE) {
+    install.packages(packages, repos = "http://cran.us.r-project.org")
+  }
 
-#  lapply(packages, require, character.only = TRUE)
-# ```
+  lapply(packages, require, character.only = TRUE)
+```
 
 ***
 
