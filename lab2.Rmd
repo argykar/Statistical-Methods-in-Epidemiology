@@ -31,7 +31,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ***
 
-```{r, echo = TREU, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
+```{r, echo = TRUE, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
 library(biostat3)
 library(tidyverse)
 

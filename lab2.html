@@ -381,27 +381,26 @@ summary {
 <p>Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με το βιβλίο <a href="https://r4ds.had.co.nz/">R 4 Data Science</a> <span class="citation">(Hadley Wickham 2017)</span></p>
 <hr />
 <p>Το παρακάτω θα εγκαταστήσει και θα φορτώσει αυτόματα τις βιβλιοθήκες στην R σε περίπτωση που δεν τις έχετε. Αν τις έχετε, αγνοήστε το και φορτώστε κανονικά με το <code>library()</code>.</p>
-<div id="r-warning-false-echo-false-message-false" class="section level1">
-<h1>```{r, warning = FALSE, echo = FALSE, message = FALSE}</h1>
-</div>
-<div id="packages---cbiostat3-tidyverse" class="section level1">
-<h1>packages &lt;- c(‘biostat3’, ‘tidyverse’)</h1>
-</div>
-<div id="if-requirepackages-false" class="section level1">
-<h1>if (require(packages) == FALSE) {</h1>
-</div>
-<div id="install.packagespackages-repos-httpcran.us.r-project.org" class="section level1">
-<h1>install.packages(packages, repos = “<a href="http://cran.us.r-project.org" class="uri">http://cran.us.r-project.org</a>”)</h1>
-</div>
-<div id="section" class="section level1">
-<h1>}</h1>
-</div>
-<div id="lapplypackages-require-character.only-true" class="section level1">
-<h1>lapply(packages, require, character.only = TRUE)</h1>
-</div>
-<div id="section-1" class="section level1">
-<h1>```</h1>
+<pre class="r"><code> packages &lt;- c(&#39;biostat3&#39;, &#39;tidyverse&#39;)
+ if (require(packages) == FALSE) {
+   install.packages(packages, repos = &quot;http://cran.us.r-project.org&quot;)
+ }</code></pre>
+<pre><code>## package &#39;biostat3&#39; successfully unpacked and MD5 sums checked
+## package &#39;tidyverse&#39; successfully unpacked and MD5 sums checked
+## 
+## The downloaded binary packages are in
+##  C:\Users\argykar\AppData\Local\Temp\RtmpEbijY0\downloaded_packages</code></pre>
+<pre class="r"><code> lapply(packages, require, character.only = TRUE)</code></pre>
+<pre><code>## [[1]]
+## [1] TRUE
+## 
+## [[2]]
+## [1] TRUE</code></pre>
 <hr />
+<pre class="r"><code>library(biostat3)
+library(tidyverse)
+
+diet &lt;- biostat3::diet</code></pre>
 <p>Η εντολή <code>str()</code> λειτουργεί ακριβώς όπως η <strong>describe</strong> του STATA.</p>
 <pre class="r"><code>str(diet)</code></pre>
 <pre><code>## &#39;data.frame&#39;:    337 obs. of  15 variables:
@@ -446,7 +445,6 @@ levels(diet$chd) &lt;- c(&#39;otherwise&#39;, &#39;chd&#39;)</code></pre>
 <div id="refs" class="references">
 <div id="ref-R4DS">
 <p>Hadley Wickham, Garret Grolemund. 2017. <em>R for Data Science</em>. O’ Reily. <a href="https://r4ds.had.co.nz/">https://r4ds.had.co.nz/</a>.</p>
-</div>
 </div>
 </div>
 </div>
