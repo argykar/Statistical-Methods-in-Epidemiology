@@ -1,7 +1,7 @@
 ---
 title: 'Statistical Methods in Epidemiology'
 subtitle: "Lab 2"
-output: rmarkdown::github_document
+output: github_document
 date: '14 October 2020'
 editor_options: 
   chunk_output_type: console
@@ -37,9 +37,6 @@ klippy::klippy(position = c('top', 'right'))
 ***
 
 ```{r, echo = TRUE, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
-library(biostat3)
-library(tidyverse)
-library(haven)
 diet <- read_dta('diet.dta')
 ```
 
