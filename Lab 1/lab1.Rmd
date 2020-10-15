@@ -2,7 +2,7 @@
 title: "Statistical Methods in Epidemiology"
 author: "Achilleas Stamoulopoulos"
 date: "10/13/2020"
-output: html_document
+output: github_document
 ---
 # Lab 1
 ## Objectives
@@ -23,7 +23,7 @@ library(epiR)
 For this part of the practical we will use data from the Whitehall study. We'll store our data in a dataframe called **wha_data** and create factors for all the categorical variables.
 
 ```{r}
-wha_data <- read.table("Data\\Wha.txt", header = TRUE)
+wha_data <- read.table("Wha.txt", header = TRUE)
 wha_data$group <- factor(wha_data$group, levels = c("1", "2", "3"))
 wha_data$work <- factor(wha_data$work, levels = c("high", "low"))
 wha_data$smok <- factor(wha_data$smok, levels = c("0", "1", "2", "3"), labels = c("never", "former", "0-19", ">= 20"))
@@ -94,7 +94,7 @@ ggplot(by_smok, aes(smok, Inc_Rate)) +
 For this part of the practical we will use data from the case-control study of HIV infection in Mwanza, Tanzania. We'll store our data in a dataframe called **mw_data** and create factors for our categorical variables. Note that variable **skin** has one missing value (9) and it will be converted to *NA* by not including it to the levels of the factor.
 
 ```{r}
-mw_data <- read.table("Data\\mwanza.txt", header = TRUE)
+mw_data <- read.table("mwanza.txt", header = TRUE)
 mw_data$case <- factor(mw_data$case, levels = c("1", "0"), labels = c("Cases", "Controls"))
 mw_data$ed <- factor(mw_data$ed, levels = c("0", "1", "2", "3"), labels = c("none", "elementary", "medium", "high"))
 mw_data$skin <- factor(mw_data$skin, levels = c("1", "0"), labels = c("yes", "no"))
