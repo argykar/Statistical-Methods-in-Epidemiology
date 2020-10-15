@@ -1,24 +1,18 @@
 ---
 title: 'Statistical Methods in Epidemiology'
 subtitle: "Lab 2"
-output: github_document
+output: 
+  html_document:
+    keep_md: true
 date: '14 October 2020'
 bibliography: references.bib
-always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-
-````{r klippy, echo=FALSE, include=TRUE}
-klippy::klippy(position = c('top', 'right'))
-```
-
-
-
-Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με τις σημειώσεις του STATA (για τον παραλληλισμό των προγραμμάτων) και το βιβλίο [R 4 Data Science](https://r4ds.had.co.nz/) [@R4DS] 
+Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με το βιβλίο [R 4 Data Science](https://r4ds.had.co.nz/) [@R4DS] 
 
 ***
 
@@ -26,22 +20,23 @@ klippy::klippy(position = c('top', 'right'))
 Αν τις έχετε, αγνοήστε το και φορτώστε κανονικά με το `library()`.
 
 ```{r, warning = FALSE, echo = FALSE, message = FALSE}
-  packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate')
-  if (require(packages) == FALSE) {
-    install.packages(packages, repos = "http://cran.us.r-project.org")
-  }
-
-  lapply(packages, require, character.only = TRUE)
+   # packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate', 'plotly')
+   # if (require(packages) == FALSE) {
+   #   install.packages(packages, repos = "http://cran.us.r-project.org")
+   # }
+   # 
+   # lapply(packages, require, character.only = TRUE)
 ```
 
 ***
 Θέτουμε αρχικά το working directory μας.
 
 ```{r}
-setwd('path/to/working_directory')
+#setwd('path/to/working_directory')
 ```
 
 Το αρχείο είναι .dta (stata). Μέσω της βιβλιοθήκης `haven` η οποία έχει την εντολή `read_dta()` φορτώνουμε το dataset.
+
 
 ```{r, echo = TRUE, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
 library(haven)
@@ -167,7 +162,7 @@ diet %>%
 
 ```{r, message= FALSE, warning=FALSE, echo = TRUE}
 diet_tse %>%
-  filter(chd == 'chd') %>%
+  filter(chd == '1') %>%
   group_by(hieng) %>%
   summarise(D = n(), Y = sum(diet_tse$tse) / 1000, rate = D / Y)
 ```
@@ -204,6 +199,87 @@ diet_tse %>%
 
 ## ΙΙ. Rate Ratios.
 
+#### Still figuring out ...
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+library(epiR)
+
+# diet_tse$hieng <- factor(diet_tse$hieng, levels = c('1', '0'), labels = c('high', 'low'))
+# diet_tse$chd <- factor(diet_tse$chd, levels = c('1', '0'), labels = c('chd', 'otherwise'))
+# 
+# diet_tse %>%
+#   group_by(hieng) %>% 
+#   mutate(analysis_time = lubridate::time_length(difftime(dox, dob), 'years')) %>%
+#   filter(chd == 'chd') %>%
+#   summarise(total = n(), pyrs = sum(analysis_time)) %>% 
+#   mutate(Inc_Rate = 1000 * total/pyrs, 
+#          lower_l = Inc_Rate/exp(1.96 * sqrt(1/total)), 
+#          upper_l = Inc_Rate*exp(1.96 * sqrt(1/ total))) -> by_hieng
+# 
+# as.table(as.matrix(by_hieng[, 2:3])) %>%
+#   epi.2by2('cohort.time')
+```
+
+## III. Exposure with more than two levels
+
+Κατά τα γνωστά, δημιουργούμε την μεταβλητη **energy_cat** και φτιάχνουμε το παρακάτω πινακάκι για τα περιγραφικά της.
+
+* Πολυ χρήσιμη η `cut()` με την οποία μπορούμε να δηλώσουμε breaks για την νέα μεταβλητή, καθώς και τα αντίστοιχα labels της.
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+energycat_sum <- diet %>%
+  mutate(energy_cat = cut(energy, breaks=c(1.5, 2.5, 3.0, 4.5), 
+                        labels=c("low","middle","high"))) %>%
+  group_by(energy_cat) %>%
+  summarise(freq = n()) %>%
+  mutate(percent = freq * 100 / sum(freq),
+         cum = cumsum(percent))
+```
+
+
+Για την εντολή **strate eng3, per(1000)** του STATA, η οποία μας δίνει τα rates για κάθε κατηγορία της μεταβλητής μαζί με τα 95% CI τους κάνουμε τα εξής: 
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+by_energycat <- diet_tse %>%
+  mutate(energy_cat = cut(energy, breaks=c(1.5, 2.5, 3.0, 4.5), 
+                        labels=c("low","middle","high"))) %>%
+  group_by(energy_cat) %>%
+  summarise(cases = sum(chd == 'chd'),
+            Y = sum(tse) / 1000,
+            rate = cases / Y,
+            lower = rate / exp(1.96 * sqrt(1 / cases)),
+            upper = rate * exp(1.96 * sqrt(1 / cases)))
+
+by_energycat
+```
+
+Για την δημιουργία του γραφήματος θα χρησιμοποιήσουμε το πακέτο **ggplot2**. 
+Παρακάτω παρουσιάζεται η λογική για το χτίσιμο του γραφήματος.
+
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+library(ggplot2)
+theme_set(theme_light()) # Θέτουμε θέμα για τα γραφήματα μας, σε περίπτωση που δεν αρέσει σε κάποιον το basic
+
+energycat_plot <- by_energycat %>%
+  ggplot(aes(energy_cat, rate)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), size = 1, width = 0.2, color = 'red') +
+  labs(x = 'Energy categories (eng3)',
+       y = 'Rate (per 1000)',
+       title = ' Rates of CHD among three levels of exposure')
+
+```
+
+Για το ylog plot  αρκεί στο `aes()` να βάλουμε αντί για *rate*, *log(rate)*
+
+Ένα βήμα παραπέρα ---> Interactive plot με το πακέτο **plotly** (πολύ χρήσιμο για παρουσιάσεις markdown)
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+plotly::ggplotly(energycat_plot)
+```
+
+
+```
 
 ***
 ## References
