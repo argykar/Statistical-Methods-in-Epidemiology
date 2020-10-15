@@ -1,11 +1,10 @@
 ---
 title: 'Statistical Methods in Epidemiology'
 subtitle: "Lab 2"
-output: 
-  html_document:
-    keep_md: true
+output: github_document
 date: '14 October 2020'
 bibliography: references.bib
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -273,11 +272,28 @@ energycat_plot <- by_energycat %>%
 
 Για το ylog plot  αρκεί στο `aes()` να βάλουμε αντί για *rate*, *log(rate)*
 
-Ένα βήμα παραπέρα ---> Interactive plot με το πακέτο **plotly** (πολύ χρήσιμο για παρουσιάσεις markdown)
-```{r, message= FALSE, warning=FALSE, echo = TRUE}
-plotly::ggplotly(energycat_plot)
+
+Ένα βήμα παραπέρα 
+
+---> Interactive plot με το πακέτο **plotly** (πολύ χρήσιμο για παρουσιάσεις markdown)
+
+```{r, message= FALSE, warning=FALSE, echo = FALSE}
+library(plotly)
+p <- ggplotly(energycat_plot)
 ```
 
+
+```{r include, echo = FALSE}
+htmlwidgets::saveWidget(p, "index.html")
+
+htmltools::tags$iframe(
+  src=file.path(getwd(), "index.html"),
+  width="100%",
+  height="600",
+  scrolling="no",
+  seamless="seamless",
+  frameBorder="0"
+)
 
 ```
 
