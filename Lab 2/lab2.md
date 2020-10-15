@@ -21,40 +21,17 @@ Science](https://r4ds.had.co.nz/) (Hadley Wickham 2017)
 στην R σε περίπτωση που δεν τις έχετε. Αν τις έχετε, αγνοήστε το και
 φορτώστε κανονικά με το `library()`.
 
-``` r
-  packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate')
-  if (require(packages) == FALSE) {
-    install.packages(packages, repos = "http://cran.us.r-project.org")
-  }
-```
-
-    ## package 'biostat3' successfully unpacked and MD5 sums checked
-    ## package 'tidyverse' successfully unpacked and MD5 sums checked
-    ## package 'haven' successfully unpacked and MD5 sums checked
-    ## package 'lubridate' successfully unpacked and MD5 sums checked
-    ## 
-    ## The downloaded binary packages are in
-    ##  C:\Users\argykar\AppData\Local\Temp\RtmpegZtEr\downloaded_packages
-
-``` r
-  lapply(packages, require, character.only = TRUE)
-```
-
-    ## [[1]]
-    ## [1] TRUE
-    ## 
-    ## [[2]]
-    ## [1] TRUE
-    ## 
-    ## [[3]]
-    ## [1] TRUE
-    ## 
-    ## [[4]]
-    ## [1] TRUE
-
 -----
 
+Θέτουμε αρχικά το working directory μας.
+
+Το αρχείο είναι .dta (stata). Μέσω της βιβλιοθήκης `haven` η οποία έχει
+την εντολή `read_dta()` φορτώνουμε το dataset.
+
 ``` r
+library(haven)
+library(dplyr)
+library(lubridate)
 diet <- read_dta('diet.dta')
 ```
 

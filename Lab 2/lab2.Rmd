@@ -3,8 +3,6 @@ title: 'Statistical Methods in Epidemiology'
 subtitle: "Lab 2"
 output: github_document
 date: '14 October 2020'
-editor_options: 
-  chunk_output_type: console
 bibliography: references.bib
 always_allow_html: true
 ---
@@ -13,9 +11,11 @@ always_allow_html: true
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-```{r klippy, echo = FALSE, include = TRUE}
+
+````{r klippy, echo=FALSE, include=TRUE}
 klippy::klippy(position = c('top', 'right'))
 ```
+
 
 
 Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με τις σημειώσεις του STATA (για τον παραλληλισμό των προγραμμάτων) και το βιβλίο [R 4 Data Science](https://r4ds.had.co.nz/) [@R4DS] 
@@ -25,7 +25,7 @@ klippy::klippy(position = c('top', 'right'))
 Το παρακάτω θα εγκαταστήσει και θα φορτώσει αυτόματα τις βιβλιοθήκες στην R σε περίπτωση που δεν τις έχετε.
 Αν τις έχετε, αγνοήστε το και φορτώστε κανονικά με το `library()`.
 
-```{r, warning = FALSE, echo = TRUE, message = FALSE}
+```{r, warning = FALSE, echo = FALSE, message = FALSE}
   packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate')
   if (require(packages) == FALSE) {
     install.packages(packages, repos = "http://cran.us.r-project.org")
@@ -35,8 +35,18 @@ klippy::klippy(position = c('top', 'right'))
 ```
 
 ***
+Θέτουμε αρχικά το working directory μας.
+
+```{r}
+setwd('path/to/working_directory')
+```
+
+Το αρχείο είναι .dta (stata). Μέσω της βιβλιοθήκης `haven` η οποία έχει την εντολή `read_dta()` φορτώνουμε το dataset.
 
 ```{r, echo = TRUE, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
+library(haven)
+library(dplyr)
+library(lubridate)
 diet <- read_dta('diet.dta')
 ```
 
