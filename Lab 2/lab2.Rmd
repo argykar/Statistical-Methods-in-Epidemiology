@@ -5,10 +5,12 @@ output: github_document
 date: '14 October 2020'
 bibliography: references.bib
 always_allow_html: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 ```
 
 Παρακαλόυμε κάθε lab να διαβάζεται σε συνδυασμό με το βιβλίο [R 4 Data Science](https://r4ds.had.co.nz/) [@R4DS] 
@@ -18,19 +20,20 @@ knitr::opts_chunk$set(echo = FALSE)
 Το παρακάτω θα εγκαταστήσει και θα φορτώσει αυτόματα τις βιβλιοθήκες στην R σε περίπτωση που δεν τις έχετε.
 Αν τις έχετε, αγνοήστε το και φορτώστε κανονικά με το `library()`.
 
-```{r, warning = FALSE, echo = FALSE, message = FALSE}
-   # packages <- c('biostat3', 'tidyverse', 'haven', 'lubridate', 'plotly')
-   # if (require(packages) == FALSE) {
-   #   install.packages(packages, repos = "http://cran.us.r-project.org")
-   # }
-   # 
-   # lapply(packages, require, character.only = TRUE)
+```{r, warning = FALSE, echo = TRUE, message = FALSE, results = 'hide'}
+   packages <- c('tidyverse', 'haven', 'lubridate', 'plotly', 'knitr',
+                 'epiR')
+   if (require(packages) == FALSE) {
+     install.packages(packages, repos = "http://cran.us.r-project.org")
+   }
+
+   lapply(packages, require, character.only = TRUE)
 ```
 
 ***
 Θέτουμε αρχικά το working directory μας.
 
-```{r}
+```{r, echo = TRUE}
 #setwd('path/to/working_directory')
 ```
 
@@ -38,9 +41,6 @@ knitr::opts_chunk$set(echo = FALSE)
 
 
 ```{r, echo = TRUE, include = TRUE, message=FALSE, conflicts = FALSE, message=FALSE}
-library(haven)
-library(dplyr)
-library(lubridate)
 diet <- read_dta('diet.dta')
 ```
 
@@ -53,8 +53,8 @@ str(diet)
 
 Η μεταβλητή *chd* του dataset είναι ακέραιος (0, 1), επομένως θα την μετατρέψουμε σε κατηγορική. Με την `factor()` παίρνουμε το ζητούμενο. Στη συνέχεια, θα ορίσουμε τις κατηγορίες της, με την `levels()`.
 ```{r, echo = TRUE}
-diet$chd <- factor(diet$chd)
-levels(diet$chd) <- c('otherwise', 'chd')
+diet$chd <- factor(diet$chd, levels = c('1', '0'), labels = c('chd', 'otherwise'))
+diet$hieng <- factor(diet$hieng, levels = c('1', '0'), labels = c('high', 'low'))
 ```
 
 Θα παρατηρήσετε πως συχνά γίνεται χρήση του pipe (`%>%`). Το pipe βρίσκεται στην βιβλιοθήκη **magrittr** και χρησιμοποιήτε για λόγους ευκολίας, καθώς η R χρησιμοποιείται από κάθε είδους επιστήμονα και όχι μόνο από προγραμματιστές. Το pipe περιλαμβάνεται στο πακέτο **tidyverse** και σε όλα τα συναφή.
@@ -161,7 +161,7 @@ diet %>%
 
 ```{r, message= FALSE, warning=FALSE, echo = TRUE}
 diet_tse %>%
-  filter(chd == '1') %>%
+  filter(chd == 'chd') %>%
   group_by(hieng) %>%
   summarise(D = n(), Y = sum(diet_tse$tse) / 1000, rate = D / Y)
 ```
@@ -181,43 +181,63 @@ diet_tse %>%
 * `mutate()` : (προαιρετικό) φτιάχνουμε και τις υπόλοιπες στήλες (το δίνει το output του STATA, γι'αυτό και το κάνουμε)
 
 ```{r, message= FALSE, warning=FALSE, echo = TRUE}
-diet_tse %>%
+diet_htgrp <- diet_tse %>%
   filter(!is.na(height)) %>%
-  mutate(htgrp = case_when(
+  mutate(htgrp = factor(case_when(
     between(height, min(diet_tse$height, na.rm = TRUE), 169.999) ~ 0,
     between(height, 170,174.999) ~ 1,
     between(height, 175, 179.999) ~ 2,
     between(height, 180, 195) ~ 3)
-    ) %>%
+    ))
+
+diet_htgrp
+
+diet_htgrp %>%
   group_by(htgrp) %>%
   summarise(count = n()) %>%
   mutate(percent = count * 100 / sum(count),
          cum = cumsum(percent))
+
 ```
 
 
 ## ΙΙ. Rate Ratios.
 
-#### Still figuring out ...
+Αρχικά, κωδικοποιούμε κατάλληλα τις μεταβλητες **hieng** και **chd**.
+Στη συνέχεια, φτιάχνουμε τον πίνακα με την μεταβλητή **analysis_time** που είναι τα person years  των cases σε κάθε κατηγορία της **hieng**. Στο τέλος, με την `mutate()` δημιουργούμε τα incidence rates κάθε κατηγορίας, μαζί με τα 95% διαστήματα εμπιστοσύνης τους.
+
+Όσον αφορά τo πακέτο **lubridate**, χρησιμοποιήθηκε η συνάρτηση `time_length()` με την οποία μπορεί κανείς να κάνει υπολογίσει χρόνο σε χρόνια, μήνες, βδομάδες, μέρες με το argument *(... ,unit = '')*. Χρησιμοποιήθηκε επίσης, η `difftime()` με την οποία υπολογίζουμε διαφορές μεταξύ ημερομηνιών.
 
 ```{r, message= FALSE, warning=FALSE, echo = TRUE}
-library(epiR)
+diet_tse %>%
+  mutate(analysis_time = lubridate::time_length(difftime(dox, doe), unit = 'years')) %>%
+  group_by(hieng) %>%
+  summarise(total = sum(chd == 'chd'), pyrs = sum(analysis_time)) %>%
+  mutate(Inc_Rate = 1000 * total/pyrs,
+         lower_l = Inc_Rate / exp(1.96 * sqrt(1/total)),
+         upper_l = Inc_Rate * exp(1.96 * sqrt(1/ total))) -> by_hieng
 
-# diet_tse$hieng <- factor(diet_tse$hieng, levels = c('1', '0'), labels = c('high', 'low'))
-# diet_tse$chd <- factor(diet_tse$chd, levels = c('1', '0'), labels = c('chd', 'otherwise'))
-# 
-# diet_tse %>%
-#   group_by(hieng) %>% 
-#   mutate(analysis_time = lubridate::time_length(difftime(dox, dob), 'years')) %>%
-#   filter(chd == 'chd') %>%
-#   summarise(total = n(), pyrs = sum(analysis_time)) %>% 
-#   mutate(Inc_Rate = 1000 * total/pyrs, 
-#          lower_l = Inc_Rate/exp(1.96 * sqrt(1/total)), 
-#          upper_l = Inc_Rate*exp(1.96 * sqrt(1/ total))) -> by_hieng
-# 
-# as.table(as.matrix(by_hieng[, 2:3])) %>%
-#   epi.2by2('cohort.time')
+by_hieng
 ```
+
+Για τα rate ratio και το 
+<img src="https://render.githubusercontent.com/render/math?math=X^2"> test της εκτίμησης θα χρησιμοποιήσουμε το πακέτο **epiR**, που περιλαμβάνει την συνάρτηση `epi.2by2()`. Η  `epi.2by2()` δέχετε **table** ως argument γι' αυτό και κάνουμε την μετατροπη με την `as.table()`. Από το data.frame **by_hieng** θέλουμε την δεύτερη και τρίτη στήλη (cases, pyrs), το οποίο λαμβάνουμε με ένα απλό slicing  του data.frame. Δηλώνοντας ως argument *(..., method = 'cohort.time')*, λαμβάνουμε υπόψιν τα person years των cases. 
+
+Τέλος, το output της `epi.2by2()` δίνει πολλά αποτελέσματα που δεν χρειαζόμαστε. Χρησιμοποιώντας τον accessor *$* μπορούμε να εξάγουμε αυτά που μας ενδιαφέρουν και να δημιουργήσουμε μία λίστα για να τα συνοψίσουμε σε ένα object. 
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+RR <- as.table(as.matrix(by_hieng[, 2:3])) %>%
+  epi.2by2('cohort.time')
+
+RR
+```
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+res_hieng <- list(table = RR$tab, RR = RR$res$RR.crude.wald, ChiSquare_Test = RR$res$chisq.crude)
+
+res_hieng
+```
+
 
 ## III. Exposure with more than two levels
 
@@ -233,55 +253,191 @@ energycat_sum <- diet %>%
   summarise(freq = n()) %>%
   mutate(percent = freq * 100 / sum(freq),
          cum = cumsum(percent))
-```
 
+energycat_sum
+```
 
 Για την εντολή **strate eng3, per(1000)** του STATA, η οποία μας δίνει τα rates για κάθε κατηγορία της μεταβλητής μαζί με τα 95% CI τους κάνουμε τα εξής: 
 
 ```{r, message= FALSE, warning=FALSE, echo = TRUE}
-by_energycat <- diet_tse %>%
+by_engcat <- diet_tse %>%
   mutate(energy_cat = cut(energy, breaks=c(1.5, 2.5, 3.0, 4.5), 
                         labels=c("low","middle","high"))) %>%
   group_by(energy_cat) %>%
-  summarise(cases = sum(chd == 'chd'),
-            Y = sum(tse) / 1000,
-            rate = cases / Y,
+  summarise(cases = sum(chd == 'chd'), 
+            pyrs = sum(tse),
+            rate = cases / pyrs,
             lower = rate / exp(1.96 * sqrt(1 / cases)),
             upper = rate * exp(1.96 * sqrt(1 / cases)))
 
-by_energycat
+by_engcat
 ```
 
 Για την δημιουργία του γραφήματος θα χρησιμοποιήσουμε το πακέτο **ggplot2**. 
 Παρακάτω παρουσιάζεται η λογική για το χτίσιμο του γραφήματος.
 
-
 ```{r, message= FALSE, warning=FALSE, echo = TRUE}
-library(ggplot2)
 theme_set(theme_light()) # Θέτουμε θέμα για τα γραφήματα μας, σε περίπτωση που δεν αρέσει σε κάποιον το basic
 
-energycat_plot <- by_energycat %>%
+energycat_plot <- by_engcat %>%
   ggplot(aes(energy_cat, rate)) +
   geom_point(size = 2) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), size = 1, width = 0.2, color = 'red') +
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+                size = 1, width = 0.2, color = 'red') +
   labs(x = 'Energy categories (eng3)',
        y = 'Rate (per 1000)',
        title = ' Rates of CHD among three levels of exposure')
 
+energycat_plot
 ```
 
 Για το ylog plot  αρκεί στο `aes()` να βάλουμε αντί για *rate*, *log(rate)*
 
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+by_engcat %>%
+  ggplot(aes(energy_cat, log(rate))) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = log(lower), ymax = log(upper)),
+                size = 1, width = 0.2, color = 'red') +
+  labs(x = 'Energy categories (eng3)',
+       y = 'log(Rate) (per 1000)',
+       title = ' Rates of CHD among three levels of exposure')
+```
 
-Ένα βήμα παραπέρα 
+Για την εντολή **stmh eng3, c(1,0)** του STATA, η οποία μας δίνει το RR για την πρώτη και την δεύτερη κατηγορία, μαζί με το 95% CI, κάνουμε τα εξής:
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+RR_engcat <- as.table(as.matrix(by_engcat[1:2, 2:3])) %>%
+  epi.2by2('cohort.time')
+
+RR_engcat
+
+```
+
+Συνοψίζοντας τα αποτελέσματα της `epi.2by2()` σε ένα object, έχουμε:
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+res_engcat <- list(table = RR_engcat$tab, 
+                   RR = RR_engcat$res$RR.crude.wald, 
+                   ChiSquare_Test = RR_engcat$res$chisq.crude)
+
+res_engcat
+```
+
+Όμοια, για την εντολή **stmh eng3, c(2,0)**:
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+RR_engcat1vs3 <- as.table(as.matrix(by_engcat[c(3,1), 2:3])) %>%
+  epi.2by2('cohort.time')
+
+RR_engcat1vs3
+
+```
+
+Συνοψίζοντας τα αποτελέσματα της `epi.2by2()` σε ένα object, έχουμε:
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+res_engcat1vs3 <- list(table = RR_engcat1vs3$tab,
+                       RR = RR_engcat1vs3$res$RR.crude.wald, 
+                       ChiSquare_Test = RR_engcat1vs3$res$chisq.crude)
+
+res_engcat1vs3
+```
+
+
+## IV. Controlling for Confounding.
+
+Η λογική για τα παρακάτω δεν έχει πολλές διαφορές με τα προηγούμενα. Η διαφορά εδώ είναι η έξτρα μεταβλητη (*job*) για την οποία θελουμε και να κάνουμε control. Επομένως, θα γκρουπάρουμε ως προς *hieng* και ως προς *job*. Τα αποτελέσματα που παίρνουμε μετα το `mutate()` είναι με βάση τους συνδυασμούς των δύο κατηγοριών. Άρα, ξανα γκρουπάρουμε ως προς *job* για να γίνει ομαδοποίηση και στη συνέχεια με `summarise()` παίρνουμε το επιθυμητό αποτέλεσμα.
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet_tse$job <- factor(diet_tse$job, levels = c('0', '1', '2'))
+
+diet_tse %>%
+  group_by(job, hieng) %>%
+  summarise(cases = sum(chd == 'chd'),
+            pyrs = sum(tse),
+            inc_rate = cases * 1000 / pyrs) %>%
+  mutate(rr = c(1, inc_rate[1]/inc_rate[2]),
+         lower = rr / exp(1.96 * sqrt(1 / cases[1] + 1 / cases[2])),
+         upper = rr * exp(1.96 * sqrt(1 / cases[1] + 1 / cases[2]))) %>%
+  group_by(job) %>%
+  summarise(RR = rr[hieng == 'low'],
+            ll = lower[hieng == 'low'],
+            ul = upper[hieng == 'low']) -> by_job
+
+by_job
+```
+
+Όμοια με πριν, γκρουπάροντας δύο φορές και φιλτράροντας για ΝΑ και 0 τιμές στα cases, παίρνουμε τον παρακάτω πίνακα για ως προς *job* και *htgrp*
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+by_job_htgrp <- diet_htgrp %>%
+  group_by(job, htgrp, hieng) %>%
+  summarize(cases = sum(chd == "chd"), py = sum(tse)) %>%
+  filter(is.na(htgrp) == FALSE & cases != 0) %>%
+  mutate(Rate = cases * 1000 / py) %>%
+  group_by(job, htgrp) %>%
+  summarise(
+    RR = Rate[hieng == 'high'] / Rate[hieng == 'low'],
+    ll = (Rate[hieng == 'high'] / Rate[hieng == 'low']) /
+      exp(1.96 * sqrt((1 / cases[hieng == 'high']) +
+                        (1 / cases[hieng == 'low']))),
+    ul = (Rate[hieng == 'high'] / Rate[hieng == 'low']) *
+      exp(1.96 * sqrt((1 / cases[hieng == 'high']) +
+                        (1 / cases[hieng == 'low'])))
+  )
+
+by_job_htgrp
+```
+
+Στην R, δεν υπάρχει έτοιμη εντολή (ή τουλάχιστον δεν την έχουμε βρει εμείς) για το overall estimate του *hieng* κοντρολάροντας για *job* και *htgrp*. Ο πιο γρήγορος τρόπος για αυτή την πληροφορία είναι μέσω μοντέλου, διαφορετικά μπορεί να γίνει χειροκίνητα με τους τύπους.
+
+Θα φτιάξουμε poisson μοντέλο για τα cases με offset τα person-years, κάνοντας adjust για *job*, *hieng* και *htgrp*
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+diet_htgrp %>%
+  group_by(job, htgrp, hieng) %>%
+  summarise(cases = sum(chd == 'chd'),
+            py = sum(tse)) %>%
+  filter(!is.na(htgrp) & cases != 0) -> model_data
+
+# Overall estimate controlling for job htgrp
+overall_RR <- model_data %>%
+  glm(cases ~ job + I(hieng == 'high') + htgrp + offset(log(py)),
+      family = 'poisson',
+      data = .) %>%
+  summary() %>%
+  .$coef %>%
+  .[3,]
+
+# εκθετικό στο συντελεστή για να πάρουμε το RR
+overall_RR[1] <- exp(overall_RR[1])
+
+overall_RR
+```
+
+προφανώς αν θέλουμε το Χ^2, κάνουμε (z-test)^2 και παίρνουμε 3.427124
+
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
+# 95% CI for the estimate (RR)
+model_data %>%
+  glm(cases ~ job + I(hieng == 'high') + htgrp + offset(log(py)),
+      family = 'poisson',
+      data = .) %>%
+  confint() %>%
+  exp() %>%
+  .[3,]
+```
+
+***
+
+### Extras:
 
 ---> Interactive plot με το πακέτο **plotly** (πολύ χρήσιμο για παρουσιάσεις markdown)
 
-```{r, message= FALSE, warning=FALSE, echo = FALSE}
-library(plotly)
+```{r, message= FALSE, warning=FALSE, echo = TRUE}
 p <- ggplotly(energycat_plot)
 ```
 
+Kατεβάστε τα αρχεία από το GitHub και ανοίξτε το **.html** για να δείτε το interactive γράφημα.
 
 ```{r include, echo = FALSE}
 htmlwidgets::saveWidget(p, "index.html")
@@ -294,7 +450,6 @@ htmltools::tags$iframe(
   seamless="seamless",
   frameBorder="0"
 )
-
 ```
 
 ***
