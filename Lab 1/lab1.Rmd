@@ -6,6 +6,8 @@ output: github_document
 always_allow_html: true
 ---
 
+***
+
 ## Objectives
 
 The aim of this practical is to display how main measures of disease and effect used in epidemiology are calculated in R.

@@ -2,6 +2,8 @@ Statistical Methods in Epidemiology
 ================
 10/13/2020
 
+-----
+
 ## Objectives
 
 The aim of this practical is to display how main measures of disease and
