@@ -41,7 +41,7 @@ contingency tables to examine the relationship between two categorical
 variables. By default (when we tabulate two variables), `CrossTable()`
 gives us cell row, column and table proportions, as well as Chi-square
 contribution for every cell. We can also specify arguments **chisq =
-TRUE ** and/or **fisher = TRUE** in order for results of a Chi-square
+TRUE** and/or **fisher = TRUE** in order for results of a Chi-square
 test and/or a Fisher’s exact test to be included. In this case, we ask
 from `CrossTable()` just the row and column proportions for every cell
 and we give more informative labels to the variables that are tabulated.
@@ -125,9 +125,9 @@ is **method**, which defines the study design and consequently
 determines the measures that will be calculated (Risk Ratio, Rate Ratio
 or Odds Ratio). As, initially, we will not take into account the fact
 that we have access to the numbers of years that every person
-contributed to the study, we will specify the argument **method = TRUE**
-in order for the risk ratio of the high vs. low grade working groups to
-be calculated.
+contributed to the study, we will specify the argument **method =
+“cohort.count”** in order for the risk ratio of the high vs. low grade
+working groups to be calculated.
 
 ``` r
 table1 <- with(wha_data, table(all, work))
@@ -211,7 +211,7 @@ epi.2by2(table2, method = "cohort.time")
 Afterwards, we’d like to examine the effect of smoking status (variable
 **smok**) on the risk of death. Smoking status is a categorical variable
 with 4 levels. For exposures with more than 2 levels `epi.2by2` does not
-work, but we can manual calculate the point estimates for incidence
+work, but we can manually calculate the point estimates for incidence
 rates for all the levels. In order to have a picture of how rates are
 modified among levels of smoking status and if they have a statistically
 significant difference we will create a plot of these point estimates
@@ -304,7 +304,7 @@ First, we’ll examine the difference in education levels in cases and
 controls.
 
 ``` r
-with(mw_data, CrossTable(case, ed, expected = FALSE, prop.r = TRUE, prop.c = TRUE, prop.t = FALSE, prop.chisq = FALSE, dnn = c("HIV", "Education")))
+with(mw_data, CrossTable(case, ed, prop.t = FALSE, prop.chisq = FALSE, dnn = c("HIV", "Education")))
 ```
 
     ## 
