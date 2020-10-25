@@ -166,7 +166,7 @@ We 'll perform a likelihood ratio test to test the hypothesis that coefficients 
 1. the manual using `logLik()` function, from Base R, that calculates the log-likelihood of a model
 2. the automatic using `lrtest()` function from **lmtest** package.
            
-In both cases, initially, we need to create the reduced model (i.e. the model without the variables whose coefficients are tested to be equal to zero). We 'll accomplish it using `update()` function.
+In both cases, initially, we need to create the reduced model (i.e. the model without the variables whose coefficients are tested to be equal to zero). We 'll accomplish it using `update()` function. 
 
 ```{r}
 fit6 <- update(fit2, .~.-eng3)
