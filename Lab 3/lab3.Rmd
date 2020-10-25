@@ -186,19 +186,6 @@ waldtest(fit2, fit6, test = "Chisq") %>%
   kable_styling()
 ```
 
-Similarly, we can test if **eng3** is statistically significant in model *fit4*.
-
-```{r}
-fit7 <- update(fit4, .~.-eng3)
-
-lrtest(fit7, fit4) %>%
-  kbl(digits = 4) %>%
-  kable_styling()
-
-waldtest(fit7, fit4, test = "Chisq") %>%
-  kbl(digits = 4) %>%
-  kable_styling()
-```
 
 5. Same as before, but this time we create a model with **hieng**.
 
