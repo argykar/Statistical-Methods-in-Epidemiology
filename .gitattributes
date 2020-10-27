@@ -9,6 +9,6 @@
 *.rds   binary
 *.Rd    text
 *.Rdx   binary
-*.Rmd	  text
-*.R  	  text
+*.Rmd	  binary
+*.R  	  binary
 *.Rproj text
