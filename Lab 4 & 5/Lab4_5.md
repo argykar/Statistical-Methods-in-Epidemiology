@@ -1465,7 +1465,7 @@ wrapper for `muhaz()` (**muhaz** package, uses kernel-based methods, see
 documentation for a more extended description). The additional
 possibility that `muhaz2()` does provide, in comparison with `muhaz()`,
 is the stratified estimation of the hazard function. See
-[https://arxiv.org/pdf/1509.03253.pdf](link) for an extended
+[https://arxiv.org/pdf/1509.03253.pdf](https://arxiv.org/pdf/1509.03253.pdf) for an extended
 presentation of different ways of hazard rate estimation in R, by
 Yolanda Hagar and Vanja Dukic. In the following lines of code, we’ll
 estimate the hazard function for patients with localised skin melanoma,
