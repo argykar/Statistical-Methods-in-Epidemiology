@@ -1,0 +1,514 @@
+---
+title: "Statistical Methods in Epidemiology - Labs 4 & 5 "
+output: 
+  github_document:
+    pandoc_args: --webtex=https://latex.codecogs.com/png.latex?%5Cdpi{100}
+editor_options: 
+  chunk_output_type: console
+always_allow_html: true
+---
+
+# Survival Analysis
+
+In this lab, we will demonstrate the central functions and tools to perform Survival Analysis in R. Let's load the libraries that we are going to use.
+
+```{r message = FALSE, warning = FALSE}
+library(biostat3)
+library(coin)
+library(haven)
+library(kableExtra)
+library(survival)
+library(survminer)
+library(tidyverse)
+```
+
+Initially we will work with the *colon_sample* dataset. 
+
+```{r}
+data1 <- read_dta("colon_sample.dta")
+```
+
+Variable *surv_mm* shows the survival of people in months and *status* indicates whether someone has died from cancer, other reason or is still alive (coded as 1, 2, 0 respectively). We will consider the people that are still alive or have died from other reason as right censored and create the variable *csr_fail* (coded 0 for right censored and 1 for those that have died from cancer).
+
+```{r}
+data1$csr_fail <- ifelse(data1$status == 1, 1, 0)
+```
+
+Now, we would like to estimate the survivor function through *life table* method. Some packages do provide built-in functions for this purpose (such as `lifetab()` from **KMsurv** package), but we will display a manual way to construct a life table for this dataset with extensive use of **Tidyverse** tools. We will consider that every event (death or censoring) happens in an interval of 12 months (so we will create 9 intervals). Standard errors of estimated survival are calculated using **Greenwood's formula** and **Delta Method**, while confidence intervals using the normal approximation of the log of cumulative hazard rate, i.e. the log(-log(S(t))).
+
+```{r message = FALSE, warning = FALSE}
+
+life_table <- data1 %>% 
+  mutate(Interval = factor(case_when(surv_mm %in% seq(0, 11, by = 1) ~ 12, 
+                                     surv_mm %in% seq(12, 23, by = 1) ~ 24,
+                                     surv_mm %in% seq(24, 35, by = 1) ~ 36,
+                                     surv_mm %in% seq(36, 47, by = 1) ~ 48,
+                                     surv_mm %in% seq(48, 59, by = 1) ~ 60,
+                                     surv_mm %in% seq(72, 83, by = 1) ~ 84,
+                                     surv_mm %in% seq(84, 95, by = 1) ~ 96,
+                                     surv_mm %in% seq(96, 107, by = 1) ~ 108,
+                                     surv_mm %in% seq(108, 120, by = 1) ~ 120), 
+                           labels = c("0-12", "12-24", "24-36", "36-48", "48-60", "72-84", "84-96", "96-108", "108-120"))
+         ) %>% 
+  group_by(Interval) %>%
+  summarise(Deaths = sum(csr_fail == 1), Lost = sum(csr_fail == 0)) %>%
+  mutate(Total = lag(35 - cumsum(Lost + Deaths), default = 35),
+         Pr = 1 - Deaths / (Total - Lost/2), 
+         Survival = cumprod(Pr), 
+         Sums = cumsum(Deaths/((Total - Deaths - Lost/2) * (Total - Lost/2))),
+         Std.Error = Survival * sqrt(Sums),
+         A = qnorm(0.025, lower.tail = FALSE)*-(1/log(Survival))*sqrt(Sums),
+         Lower_L = Survival^exp(A),
+         Upper_L = Survival^exp(-A),
+         compl_months = c(seq(12, 60, by = 12), seq(84, 120, by = 12))
+         ) %>% 
+  select(Interval, Total, Deaths, Lost, Survival, Std.Error, Lower_L, Upper_L, compl_months)
+
+
+
+
+life_table %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+Let's visualize the survival function that was estimated from *life table* method.
+```{r}
+ggplot(life_table, aes(compl_months, Survival)) +
+  geom_point(size = 4) +
+  geom_line(size = 1) +
+  geom_errorbar(aes(ymin = Lower_L, ymax = Upper_L), width = 0, size = 0.2, color = "blue") +
+  ylim(0, 1) +
+  xlab("Survival time in completed months") +
+  ylab("Proportion Surviving")
+
+```
+
+The Kaplan-Meier estimates of survival function can be provided by `survfit()` from **survival** package. This function accepts as main argument either a formula in the form of **Surv(time, event) ~ ...** (where `Surv()` comes also from **survival** package and is necessary as in this way someone indicates that time to event as well as whether the event has happened or not are modelled and on the right-hand side of the formula we can use **"1"** for a single curve or a predictor for comparing the curves for its values) or a previously fitted model (e.g. a Cox model). Let's see the overall survival in our sample.
+
+```{r}
+overall_surv <- survfit(Surv(surv_mm, csr_fail) ~ 1, data = data1) %>% 
+  summary(censored = TRUE)
+
+lapply(c(2:7, 14:15), function(x) overall_surv[x]) %>%
+  as.data.frame() %>%
+  head(12) %>%
+  kbl() %>%
+  kable_styling()
+
+```
+
+The use of `lapply()`, in this case, helps us extract the columns we want to be displayed.
+
+In order to graph the Kaplan-Meier estimates, we will use `ggsurvplot()`, which accepts a *survfit* object, from **survminer** package. Furthermore, we will specify some of its numerous available arguments in order to improve the look of our graph. 
+
+```{r}
+ggsurvplot(fit = survfit(Surv(surv_mm, csr_fail) ~ 1, data = data1),
+           title = "Kaplan-Meier estimates of cause-specific survival",
+           xlab = "Months",
+           ggtheme = theme_gray(),
+           palette = "red",
+           conf.int = TRUE,
+           conf.int.fill = "black",
+           surv.median.line = "hv",
+           risk.table = TRUE,
+           legend.title = "All patients")
+```
+
+From now on, we will work with the *melanoma* dataset. We 'll load it and create factors for our categorical variables. We 'll also create a variable that takes the value 1 if the person has died from cancer and the value 0 in every other case (dead due to other reason, alive or lost to follow-up).
+
+```{r}
+data2 <- read_dta("melanoma.dta")
+
+data2$sex <- factor(data2$sex, labels = c("male", "female"))
+data2$stage <- factor(data2$stage, labels = c("Unknown", "Localised", "Regional", "Distant"))
+data2$subsite <- factor(data2$subsite, labels = c("Head and Neck", "Trunk", "Limbs", "Multiple and NOS"))
+
+data2$year8594 <- factor(data2$year8594, labels = c("75-84", "85-94"))
+data2$agegrp <- factor(data2$agegrp, labels = c("0-44", "45-59", "60-74", "75+"))
+
+data2$event <- ifelse(data2$status == 1, 1, 0)
+
+```
+
+We'll graph the survivor function using the Kaplan-Meier method, separately for each of the two calendar periods in which diagnosis took place, for only those patients with localised skin melanoma.
+
+```{r}
+fit1 <- survfit(Surv(surv_mm, event) ~ year8594, data = data2, subset = (stage == "Localised"))
+
+ggsurvplot(fit = fit1,
+           title = "Kaplan-Meier survival estimates",
+           subtitle = "Stratified by prognosis year",
+           ggtheme = theme_gray(),
+           xlab = "Months",
+           palette = c("black", "yellow"),
+           legend.title = "Patients with localised skin melanoma",
+           legend.labs = c("year: 75-84", "year: 85-94"))
+
+
+```
+
+If we'd like to provide smoothed estimates for the hazard function, there are some R packages developed for that purpose, which implement different ways for semi- or non-parametric estimation of hazard function. We will use `muhaz2()` from **biostat3** package, which is a wrapper for `muhaz()` (**muhaz** package, uses kernel-based methods, see documentation for a more extended description). The additional possibility that `muhaz2()` does provide, in comparison with `muhaz()`, is the stratified estimation of the hazard function. See [https://arxiv.org/pdf/1509.03253.pdf](link) for an extended presentation of different ways of hazard rate estimation in R, by Yolanda Hagar and Vanja Dukic. In the following lines of code, we'll estimate the hazard function for patients with localised skin melanoma, for each of the two calendar periods in which diagnosis took place and and afterwards we will create a plot of it.
+
+```{r}
+
+muhaz2(formula(fit1), data = data2, subset = (stage == 'Localised')) %>%
+  data.frame() %>%
+  select("Time" = x, "Hazard" = y, "Strata" = year8594) %>%
+  ggplot(aes(Time, Hazard)) + 
+  geom_line(aes(color = Strata), size = 1.3) + 
+  ggtitle("Smoothed hazard estimates by year of diagnosis")
+```
+
+A log rank test to compare the survival of people with localised skin melanoma between the two periods of diagnosis can be performed by `survdiff()` function from **survival**. It accepts a formula, like `survfit()`, and specifying the argument *rho* the type of test can be controlled. By default, *rho* = 0, which is the usual log rank test (Mantel-Haenszel), while *rho* = 1 leads to Peto & Peto modification of Wilcoxon test (slightly different from the one in *Stata*)
+
+```{r}
+survdiff(Surv(surv_mm, event) ~ year8594, data = data2, subset = (stage == "Localised"))
+
+survdiff(Surv(surv_mm, event) ~ year8594, data = data2, subset = (stage == "Localised"), rho = 1)
+```
+
+Now, we will work with the whole of our sample, i.e all stages of cancer metastasis. First, we will plot estimates of survivor and hazard function by stage of metastasis.
+
+```{r}
+fit2 <- survfit(Surv(surv_mm, event) ~ stage, data = data2)
+
+ggsurvplot(fit = fit2,
+           title = "Kaplan-Meier survival estimates",
+           subtitle = "Stratified by metastasis stage",
+           ggtheme = theme_gray(),
+           xlab = "Months",
+           palette = c("red", "green", "blue", "orange"),
+           legend.labs = c("Unknown", "Localised", "Regional", "Distant"))
+
+muhaz2(Surv(surv_mm, event) ~ stage, data = data2) %>%
+  data.frame() %>%
+  select("Time" = x, "Hazard" = y, "Strata" = stage) %>%
+  ggplot(aes(Time, Hazard)) + 
+  geom_line(aes(color = Strata), size = 1.3) + 
+  ggtitle("Smoothed hazard estimates by stage of metastasis")
+```
+
+Estimation of the mortality rates for each stage:
+
+```{r warning = FALSE, message = FALSE}
+data2 %>%
+  group_by(stage) %>%
+  summarise(D = sum(event == 1), 
+            Y = sum(surv_mm),
+            Rate = D / Y,
+            Lower = Rate / exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / D)),
+            Upper = Rate * exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / D))) %>%
+  kbl(digits = 4) %>%
+  kable_styling()
+```
+
+To obtain the same estimates per 1000 years of follow-up, we will first create a variable that shows the survival of people in years and afterwards we will proceed with similar manipulations as before.
+
+```{r message = FALSE, warning = FALSE}
+data2 <- data2 %>%
+  mutate(new_surv_mm = surv_mm/12)
+
+data2 %>%
+  group_by(stage) %>%
+  summarise(D = sum(event == 1), 
+            Y = sum(new_surv_mm) / 1000,
+            Rate = D / Y,
+            Lower = Rate / exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / D)),
+            Upper = Rate * exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / D))) %>%
+  kbl(digits = 4) %>%
+  kable_styling()
+```
+
+Next, we will investigate whether survival is different for males and females by plotting the survivor function, tabulating mortality rates and conducting a log rank test.
+
+```{r message = FALSE, warning = FALSE}
+fit3 <- survfit(Surv(new_surv_mm, event) ~ sex, data = data2)
+
+ggsurvplot(fit = fit3,
+           title = "Kaplan-Meier survival estimates",
+           subtitle = "Stratified by metastasis stage",
+           ggtheme = theme_gray(),
+           xlab = "Years",
+           palette = c("red", "blue"),
+           legend.labs = c("Male", "Female"))
+
+
+data2 %>%
+  group_by(sex) %>%
+  summarise(D = sum(event == 1), 
+            Y = sum(new_surv_mm) / 1000,
+            Rate = D / Y,
+            Lower = Rate / exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / D)),
+            Upper = Rate * exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / D))) %>%
+  kbl(digits = 4) %>%
+  kable_styling()
+
+
+survdiff(Surv(new_surv_mm, event) ~ sex, data = data2)
+
+```
+
+Finally, we will test whether survival probabilities differ significantly by gender allowing for the effect of stage. Hence, we 'll perform a stratified log rank test. A stratified log rank test can be implemented in R through `logrank_test()` from **coin** package. It accepts a *formula* in the form of **Surv(time, event) ~ x|z**, where z is an optional *factor* for stratification. Furthermore, we'll plot the survival function of males and females for all stages of cancer metastasis. Note the use of `group_map()` from **purrr** (belongs to **Tidyverse** family), that applies a function to each group of a grouped object (here it applies `survfit()` separately to all the observations in each stage of metastasis).
+
+```{r}
+logrank_test(Surv(new_surv_mm, event) ~ sex | stage, data = data2)
+
+
+strat_fit <- data2 %>% 
+  group_by(stage) %>%
+  group_map(~survfit(Surv(surv_mm, event) ~ sex, data = .)) 
+
+ggsurvplot(fit = strat_fit[[1]],
+           data = data2,
+           title = "Kaplan-Meier survival estimates, by sex",
+           subtitle = "Stage: Unknown",
+           ggtheme = theme_gray(),
+           xlab = "Years",
+           palette = c("red", "blue"),
+           legend.labs = c("Male", "Female"))
+
+
+ggsurvplot(fit = strat_fit[[2]],
+           data = data2,
+           title = "Kaplan-Meier survival estimates, by sex",
+           subtitle = "Stage: Localised",
+           ggtheme = theme_gray(),
+           xlab = "Years",
+           palette = c("red", "blue"),
+           legend.labs = c("Male", "Female"))
+
+
+ggsurvplot(fit = strat_fit[[3]],
+           data = data2,
+           title = "Kaplan-Meier survival estimates, by sex",
+           subtitle = "Stage: Regional",
+           ggtheme = theme_gray(),
+           xlab = "Years",
+           palette = c("red", "blue"),
+           legend.labs = c("Male", "Female"))
+
+ggsurvplot(fit = strat_fit[[4]],
+           data = data2,
+           title = "Kaplan-Meier survival estimates, by sex",
+           subtitle = "Stage: Distant",
+           ggtheme = theme_gray(),
+           xlab = "Years",
+           palette = c("red", "blue"),
+           legend.labs = c("Male", "Female"))
+```
+
+We are going to run a Cox PH model (not checking for PH though), using as event the *Dead: cancer* category. The population of interest is the patients with *Localised* cancer.
+
+```{r}
+cox1 <- coxph(Surv(surv_mm, event) ~ year8594,
+  data = data2,
+  subset = (stage == 'Localised'),
+  method = 'breslow') 
+
+coef(summary(cox1)) %>%
+  cbind(., exp(confint(cox1))) %>% 
+  kbl(digits = 4) %>%
+  kable_styling()
+```
+
+From the table above, we can conclude that mortality cancer rates due to melanoma during 1985-1994 have decreased 23%, compared to the earliest period. Even though this estimate is not adjusted for any potential confounder, it is highly statistically significant [95% CI: (0.68, 0.88)].
+
+```{r}
+table1 <- cox1 %>% 
+  summary() %>% 
+  .[c(9, 10, 12)] %>% 
+  unlist() %>% 
+  round(4) %>% 
+  as.data.frame()
+
+colnames(table1) <- 'value'
+
+table1 %>%  
+  kbl(digits = 2) %>%
+  kable_styling() 
+```
+
+The three test statistics are very similar, as we expected since all assume the same thing. That PH holds (survival is proportional over time across the categories of calendar period)
+
+```{r}
+cox2 <- coxph(Surv(surv_mm, event) ~ sex + year8594 + agegrp,
+  data = data2, 
+  subset = (stage == 'Localised'),
+  method = 'breslow')
+
+coef(summary(cox2)) %>%
+  cbind(., exp(confint(cox2))) %>% 
+  kbl(digits = 4) %>%
+  kable_styling()
+```
+For patients of the same sex diagnosed in the same calendar period, those aged 60-74 have 83% higher risk of death due to melanoma than those aged 0-44. This difference is statistically significant [95% CI: (1.54, 2.17)].
+
+We are going to investigate the importance of age as group in the model. We are going to use likelihood ratio test. So, we will need the model without age.
+
+```{r}
+cox2noage <- update(cox2, .~. -agegrp)
+
+lmtest::lrtest(cox2, cox2noage) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+As we've seen from the Wald test, the age variable, grouped as categorical with 4 levels is highly significant in the model. LR test is confirming this fact.
+
+```{r, warnings = FALSE, message = FALSE}
+# instead of using the default "cloglog" of R, we create the function below
+minusloglog <- function(x) {
+  return(-log(-log(x)))
+}
+
+# Cox model to graph.
+# We want to test proportionality so we are going to use log-log graph
+# we also use log for the time 
+cox1graph <- coxph(Surv(log(surv_mm ), event) ~ strata(year8594),
+  data = data2,
+  subset = (stage == 'Localised'),
+  method = 'breslow')
+
+ggsurvplot(survfit(cox1graph),
+  data = data2,
+  censor = FALSE,
+  fun = minusloglog,
+  )$plot +
+  scale_x_continuous() +
+  labs(x = 'ln(time)', y = '-ln(-ln(S(t)))',
+       title = 'Log-log graph for assesing PH assumption',
+       subtitle = 'Stratified by diagnosis period')
+
+# smoothed hazard estimates, by year8594
+muhaz2(formula(cox1), data = data2, subset = (stage == 'Localised')) %>%
+  data.frame() %>%
+  select("Time" = x, "Hazard" = y, "Strata" = year8594) %>%
+  ggplot(aes(Time, Hazard)) + 
+  geom_line(aes(color = Strata), size = 1.3) + 
+  ggtitle("Smoothed hazard estimates by year of diagnosis")
+```
+
+From the log-log graph we can see that patients diagnosed during 1985-94 have superior survival. The difference between the two curves is similar over time, except one point where the curves cross. No reason to reject proportionality assumption.
+
+Up to $ln(time) = 2$, we can see from the graph that we do not have much data to rely on.
+Also we can check from our data, that only seven points are take part in the graphs, up to $log(time) = 2$ or $time = exp(2) = 7.4$.
+
+```{r}
+survfit(cox1) %>%
+  summary() %>%
+  .[c('time', 'n.event')] %>%
+  as.data.frame() %>%
+  filter(between(log(time), 0, 2))
+```
+
+From our model *cox1* we can conclude that $HR = e^{-0.25747} = 0.773$. This is the proportionality constant between the two groups.
+
+Now, we are going to build a model with *years8594*, *age* and *sex* as predictors.
+
+```{r, warning=FALSE, message=FALSE}
+cox3 <- coxph(Surv(log(surv_mm), event) ~ sex + year8594 + strata(agegrp),
+  data = data2,
+  method = 'breslow',
+  subset = (stage == 'Localised'))
+
+# test of PH assumption
+cox.zph(cox2, 'identity')
+
+# for this plot to present the graph for each strata, you need to assign strata(variable)
+# in the cox model. Also assign log(time) instead of time.
+ggsurvplot(survfit(cox3),
+  data = data2,
+  censor = FALSE,
+  fun = minusloglog,
+  )$plot +
+  scale_x_continuous() +
+  labs(x = 'ln(time)', y = '-ln(-ln(S(t)))',
+       title = 'Log-log graph vs log(time) for assesing PH assumption',
+       subtitle = 'Stratified by age group')
+  
+```
+
+
+Here we present a second way of displaying smoothing hazard curves. We will use the package `biostat3` and the function `coxphHaz()`. 
+
+```{r}
+cox4 <- coxph(Surv(surv_mm, event) ~ agegrp,
+  data = data2,
+  method = 'breslow',
+  subset = (stage == 'Localised'))
+
+muhaz2(formula(cox4), data = data2, subset = (stage == 'Localised')) %>%
+  data.frame() %>%
+  select("Time" = x, "Hazard" = y, "Strata" = agegrp) %>%
+  ggplot(aes(Time, Hazard)) + 
+  geom_line(aes(color = Strata)) + 
+  ggtitle("Smoothed hazard estimates by age group")
+
+coxphHaz(cox4, newdata = data.frame(agegrp=levels(data2$agegrp))) %>%
+  plot()
+```
+
+Next, we are going to plot the scaled Schoenfeld residuals. The smooth line on the graph is an estimate of hazard ratio over time. We can see that it diverges from a straight line and that's a sign of non-proportionality, regarding the age group variable.
+
+```{r}
+ggcoxzph(cox.zph(cox4))
+```
+
+We also can use the extended Cox model for assesing time-varying covariates. The extended Cox model uses an interaction between the variable of interest with time. Below we present the way of producing such model. We create inside the function `coxph()` another function `tt()`. With this we can specify how the variable of interest, here *agegrp*, will interact with time. As you've seen in the lab, we create an indicator function of time.
+
+$$
+g(t) = \left\{
+\begin{array}{ll}
+      1 & t\geq 24 \\
+      0 & t < 24\\
+\end{array} 
+\right. 
+$$
+```{r}
+m <- coxph(Surv(surv_mm, event) ~ sex + year8594 + agegrp + tt(agegrp), 
+           data = data2,
+           subset = (stage == 'Localised'),
+           method = "breslow",
+           tt = function(x, t,...){
+             mtrx <- model.matrix(~ x)[,-1] 
+             mtrx*ifelse(t >= 24, 1, 0)
+             })
+           
+cbind(coef(summary(m)), exp(confint(m))) %>%
+  kbl(digits = 4) %>%
+  kable_styling()
+
+```
+
+Now, we are going to include status **Dead: other** in our model, so we can see how are estimates changing.
+
+```{r}
+coxph(Surv(surv_mm, status == 1 | status == 2) ~ sex + year8594 + agegrp,
+  data = data2,
+  subset = (stage == 'Localised'),
+  method = 'breslow')
+```
+
+For patients of the same sex, those aged 60-74 at diagnosis have 3.4 times higher risk of death due to any cause than those aged 0-44. This difference is statistically significant.
+
+Compared to the previous model in which we assumed that cancer death was the event/failure, here we assume that event is death by any cause. The estimated hazard ratios for sex and period are similar, but when it comes to the age specific estimates, the results are very different. This is due to the fact that all-cause mortality is increasing as age increases.
+
+Next, we are going to use the full dataset and not just the population with localised cancer for the models below.
+
+```{r}
+coxph(Surv(surv_mm, status == 1) ~ sex,
+  data = data2,
+  method = 'breslow')
+```
+
+We can see that without adjusting for potential confounders, females have 38% lower mortality than males.
+
+ 
+```{r}
+coxph(Surv(surv_mm, status == 1) ~ sex + year8594 + agegrp + subsite + stage,
+  data = data2,
+  method = 'breslow')
+```
+
+After adjusting for potential confounders we see that the estimated difference in cancer mortality between males and females had decreased slightly but there is still quite large difference.
