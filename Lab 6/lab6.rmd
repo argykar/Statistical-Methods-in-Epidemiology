@@ -1,0 +1,431 @@
+---
+title: "Statistical Methods in Epidemiology - Lab 6"
+output: 
+  github_document:
+    pandoc_args: --webtex=https://latex.codecogs.com/png.latex?%5Cdpi{100}
+editor_options: 
+  chunk_output_type: console
+always_allow_html: true
+---
+
+## Table of Contents
+1. [Unmatched studies - individual records](#unmatched)
+2. [Age as a confounder in the BCG data](#age)
+3. [Logistic regression](#logistic)
+4. [Frequency records](#frequency)
+
+# Unmatched Case - Control Studies
+
+We'll begin by loading the libraries that will be used throughout the lab.
+
+```{r, message = FALSE, warning = FALSE}
+library(epiDisplay)
+library(epiR)
+library(gmodels)
+library(haven)
+library(kableExtra)
+library(lmtest)
+library(tidyverse)
+```
+
+
+
+## 1. Unmatched studies - individual records <a name="unmatched"></a>
+
+Initially, we will work with the *lep* dataset. It contains records for 274 cases of leprosy and 1096 controls (variable *d*, coded 1 for cases and 0 for controls). The rest of the variables are BCG scar (present or absent), age at the time when the case or control was registered, sex, type of house and education of mother. We'll create factors for the categorical variables. Here, age is a categorical variable, but we will keep the continuous version and create a categorical one, as we'll use both of them in what follows.
+
+```{r}
+data1 <- read_dta("lep.dta")
+
+data1$d <- factor(data1$d, levels = c("1", "0"), labels = c("Cases", "Controls"))
+data1$sex <- factor(data1$sex, labels = c("Male", "Female"))
+data1$bcg <- factor(data1$bcg, levels = c("1", "0"), labels = c("Present", "Absent"))
+
+data1$cage <- factor(data1$age, labels = c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34"))
+```
+
+The distribution of *BCG* within cases and controls can be obtained in the following way.
+
+```{r}
+with(data1, CrossTable(bcg, d, prop.r = FALSE, prop.t = FALSE, prop.chisq = FALSE))
+```
+
+To obtain a table of mean age by case - control status, we can work with tools from **Tidyverse**. Note that, in this case, age is treated as a continuous variable.
+
+```{r, warning = FALSE, message = FALSE}
+data1 %>%
+  group_by(d) %>%
+  summarise(Mean_Age = mean(age), 
+            Std_Dev = sd(age), 
+            Freq = n()) %>%
+  kbl(digits = 2) %>%
+  kable_styling()
+```
+
+Next, we'd like to calculate the odds ratio of leprosy comparing people with BCG present to those with BCG absent. We can work with `epi.2by2()` from **epiR** package (we'll also get further information, e.g. a test of equality of odds). For a description of how this function works, see **Lab 1** or documentation.
+
+```{r}
+table1 <- with(data1, table(d, bcg))
+
+epi.2by2(table1, method = "case.control", outcome = "as.rows")
+             
+```
+
+
+Now, we'll work with the categorical version of age. First, we will manually calculate the odds of leprosy for every age category, along with 95% confidence intervals.
+
+```{r, message = FALSE, warning = FALSE}
+odds <- data1 %>% 
+  group_by(cage) %>%
+  summarise(Cases = sum(d == "Cases"), 
+            Controls = sum(d == "Controls")) %>%
+  mutate(Odds = Cases / Controls, 
+         ll = Odds / exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / Cases + 1 / Controls)), 
+         ul = Odds * exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / Cases + 1 / Controls))) %>%
+  select("Age" = cage, Cases, Controls, Odds, ll, ul) 
+
+
+odds %>% 
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+Afterwards, we will provide the odds ratios of leprosy comparing every age category to the reference age category (i.e. 0-4). That's a bit more challenging.
+
+```{r}
+odds %>%
+  mutate(OR = Odds / Odds[Age == "0-4"],
+         LL = OR / exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / Cases + 1 / Controls + 1 / Cases[Age == "0-4"] + 1 / Controls[Age == "0-4"])),
+         UL = OR * exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / Cases + 1 / Controls + 1 / Cases[Age == "0-4"] + 1 / Controls[Age == "0-4"])),
+         ) %>%
+  select(Age, OR, LL, UL) %>%
+  filter(Age != "0-4") %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+
+  
+```
+
+A plot of the odds of leprosy against levels of age can be created in the following way.
+
+```{r}
+ggplot(odds, aes(Age, Odds)) + 
+  geom_point(size = 3, colour = "blue") + 
+  geom_line(group = 1, size = 1) +
+  geom_errorbar(aes(ymin = ll, ymax = ul), width = 0.2, size = 0.2, color = "black") + 
+  ylab("Odds of leprosy") +
+  xlab("Age group")
+```
+
+
+
+## II. Age as a confounder in the BCG data <a name='age'></a>
+
+Now, we'd like to investigate whether age is a confounder in the BCG - leprosy relationship. One way to test this, besides fitting a logistic regression model adjusted for age, is to stratify by age and calculate the Mantel - Haenszel estimate of odds ratio. A useful function for this purpose is `mhor()` by **epiDisplay** package, that takes as main argument a stratified table (there is also `mantelhaen.test()` from Base R).
+
+```{r}
+table2 <- with(data1, table(d, bcg, cage))
+
+mhor(mhtable = table2, graph = FALSE)
+```
+
+If we'd like to control for both age and sex, we have to keep in mind that `mhor()` (as well as all R functions that i know that calculate Mantel - Haenszel odds ratio) do not expicitly allow tables stratified by more than one variable and the most easy way to proceed is fitting a model. Despite that, if we insist on the former way, we have to create a variable from all combinations of levels of age and sex and stratify by it.
+
+```{r}
+data <- data1 %>% 
+  mutate(Age_Sex = factor(case_when(cage == "0-4" & sex == "Male" ~ "1a", 
+                                    cage == "0-4" & sex == "Female" ~ "1b", 
+                                    cage == "5-9" & sex == "Male" ~ "2a",
+                                    cage == "5-9" & sex == "Female" ~ "2b",
+                                    cage == "10-14" & sex == "Male" ~ "3a",
+                                    cage == "10-14" & sex == "Female" ~ "3b",
+                                    cage == "15-19" & sex == "Male" ~ "4a",
+                                    cage == "15-19" & sex == "Female" ~ "4b",
+                                    cage == "20-24" & sex == "Male" ~ "5a",
+                                    cage == "20-24" & sex == "Female" ~ "5b",
+                                    cage == "25-29" & sex == "Male" ~ "6a",
+                                    cage == "25-29" & sex == "Female" ~ "6b",
+                                    cage == "30-34" & sex == "Male" ~ "7a",
+                                    cage == "30-34" & sex == "Female" ~ "7b"))) 
+
+table3 <- with(data, table(d, bcg, Age_Sex))
+
+mhor(mhtable = table3, graph = FALSE)
+```
+
+
+
+## III. Logistic regression <a name='logistic'></a>
+
+To proceed with logistic regression models, at first we need to relevel variables *d* and *bcg*. We'll accomplish it using `fct_relevel()` from **forcats** (belongs to **Tidyverse** family). It provides numerous ways to change the levels of a factor, but the most simple one is to write the levels in the order you want them to be. If you specify only a subset of the levels, the ones that are not specified will keep their initial order, but will come after those that are specifed (in variable *d* for example, specifying only *"Controls"* means that level *"Controls"* will be first and after that all the rest of the levels will be in their initial order, i.e the level *"Cases"* will be in the second position as it's the only level left)
+
+```{r}
+data1$d <- fct_relevel(data1$d, "Controls")
+data1$bcg <- fct_relevel(data1$bcg, "Absent")
+```
+
+So, in what follows, we will work with logistic regression models. Inside the `glm()` function you need to specify **family = binomial** and by default link function is *logit*. To obtain the odds ratios along with their standard errors and 95% confidence intervals, we will use `r_table()` function that we had created in **Lab3** (see **Lab3** for the code).
+
+```{r, include = FALSE}
+r_table <- function(model) {
+  if (is(model, "glm") == TRUE) {
+    if (family(model)$family == "poisson") {
+      modification <- 
+        model %>% 
+        summary() %>% 
+        coefficients() %>% 
+        as.data.frame() %>% 
+        slice(-1) %>% 
+        rownames_to_column(var = "Predictors") %>% 
+        mutate(IRR = exp(Estimate), 
+               Std_Err = IRR * `Std. Error`, 
+               pval = sprintf("%1.3f", `Pr(>|z|)`),
+               pvalue = ifelse(pval < 0.001, '<0.001', pval)) %>%
+        select(Predictors, 
+               IRR, Std_Err, 
+               "z_value" = `z value`, 
+               "P-Value" = pvalue)
+      
+      if (nrow(modification) > 1) {
+        final_table <- bind_cols(modification, 
+                                 LL = exp(confint.default(model)[-1, ])[, 1], 
+                                 UL = exp(confint.default(model)[-1, ])[, 2])
+        } else {
+          final_table <- bind_cols(modification, 
+                                   LL = exp(confint.default(model)[-1, ])[1], 
+                                   UL = exp(confint.default(model)[-1, ])[2])
+        }
+      } else if (family(model)$family == "binomial") {
+              modification <- 
+        model %>% 
+        summary() %>% 
+        coefficients() %>% 
+        as.data.frame() %>% 
+        slice(-1) %>% 
+        rownames_to_column(var = "Predictors") %>% 
+        mutate(OR = exp(Estimate), 
+               Std_Err = OR * `Std. Error`, 
+               pval = sprintf("%1.3f", `Pr(>|z|)`),
+               pvalue = ifelse(pval < 0.001, '<0.001', pval)) %>%
+        select(Predictors, 
+               OR, Std_Err, 
+               "z_value" = `z value`, 
+               "P-Value" = pvalue)
+      
+      if (nrow(modification) > 1) {
+        final_table <- bind_cols(modification, 
+                                 LL = exp(confint.default(model)[-1, ])[, 1], 
+                                 UL = exp(confint.default(model)[-1, ])[, 2])
+        } else {
+          final_table <- bind_cols(modification, 
+                                   LL = exp(confint.default(model)[-1, ])[1], 
+                                   UL = exp(confint.default(model)[-1, ])[2]) 
+        } 
+      } else {
+        stop("Family of the model is not Poisson or Binomial")
+        }
+    } else {
+      stop("Object is not of class glm")
+      } 
+    return(final_table) 
+}
+```
+
+Let's find the effect of **BCG** through a logistic regression model.
+
+```{r}
+fit1 <- glm(d ~ bcg, data = data1, family = binomial)
+
+summary(fit1)
+
+```
+
+
+To obtain the odds ratio of leprosy comparing people with BCG present to those with BCG absent, we will use `r_table()`.
+
+```{r}
+r_table(fit1) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+Same for a model with age as independent variable.
+
+```{r}
+fit2 <- glm(d ~ cage, data = data1, family = binomial)
+
+r_table(fit2) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+To find the effect BCG controlled for age:
+
+```{r}
+fit3 <- glm(d ~ bcg + cage, data = data1, family = binomial)
+
+r_table(fit3) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+We'll perform a likelihood ratio test to test if BCG remains significant after adjusting for the age, using `lrtest()` from **lmtest**. 
+
+```{r}
+lrtest(fit1, fit3) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+In order to find the linear effect of age, we'll use the continuous version of age and fit a logistic regression model.
+
+```{r}
+fit4 <- glm(d ~ age, data = data1, family = binomial)
+
+r_table(fit4) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+As before, we'll find the effect of bcg controlled for the continuous version of age.
+
+```{r}
+fit5 <- glm(d ~ age + bcg, data = data1, family = binomial)
+
+r_table(fit5) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+Now we will create a model with interaction between bcg and age as categorical variable. We can see from the table below that the OR for the interaction between the last age category is 0. This is due to the fact that we have 0 observations while grouping in the cases of bcg. We can safely ignore it.
+
+```{r}
+fit6 <- glm(d ~ cage * bcg, data = data1, family = binomial)
+
+r_table(fit6) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+As seen below, the effect of BCG without interaction is $e^{-1.105} = 0.33$. 
+```{r, warning = FALSE, message = FALSE}
+fit7 <- glm(d ~ cage + bcg, data = data1, family = binomial)
+
+coef(summary(fit7)) %>%
+  cbind(., confint(fit7)) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+This effect is depended on the age groups for a model of
+interaction. More specifically:
+
+```{r}
+r_table(fit6) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+Note that for the last age group, i.e. 30-34, the effect of having the BCG scar on the odds of having leprosy is 0.44 times the odds of having leprosy but not having had a BCG scar, i.e. the same as in the first age group. This happens because an interaction term for this last category cannot be estimated since there are NO cases within those with BCG scar for this particular age group.
+
+Fitting a model with interaction between age as continuous and bcd.
+```{r}
+fit7 <- glm(d ~ age * bcg, data = data1, family = binomial)
+
+r_table(fit7) %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+The p-value of 0.135 indicates that the interaction is not statistically significant.
+
+## IV. Frequency records <a name='frequency'></a>
+
+We will now load the second dataset, the *Guy* dataset.
+
+This is a weighted dataset. In order to work with it we need to make it long. We will use the library **hutils** and the function `weight2rows()`. Otherwise, you can do it manually. The process after this is already done above.
+
+Also there must be a way to work with weighted data, but its easier with the long format.
+
+```{r, warning = FALSE, message = FALSE}
+data2 <- read_dta('guy.dta')
+data2$d <- factor(data2$d, 
+                  levels = c(0, 1),
+                  labels = c('Controls', 'Cases'))
+data2$level <- factor(data2$level)
+
+data3 <- hutils::weight2rows(data2, weight.var = 'N')
+
+odds_level <- data3 %>% 
+  group_by(level) %>%
+  summarise(Cases = sum(d == "Cases"), 
+            Controls = sum(d == "Controls")) %>%
+  mutate(Odds = Cases / Controls, 
+         ll = Odds / exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / Cases + 1 / Controls)), 
+         ul = Odds * exp(qnorm(0.025, lower.tail = FALSE) * sqrt(1 / Cases + 1 / Controls))) %>%
+  dplyr::select('Level' = level, Cases, Controls, Odds, ll, ul)
+
+odds_level %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+Regarding the test for homogeity of equal odds you can do the following.
+
+```{r}
+# where cc is case/control
+table3 <- table(level = data3$level, cc = data3$d) 
+
+table3 %>%
+  chisq.test()
+```
+
+And a visual for the above odds. We can clearly see the decreasing trend of odds. There are no sudden changes it could be approximated by a linear function. The greatest decline is observed from level 1 to level 2.
+
+```{r}
+odds_level %>%
+  ggplot(aes(Level, Odds)) +
+  geom_point(size = 3, colour = "blue") + 
+  geom_line(group = 1, size = 1) +
+  geom_errorbar(aes(ymin = ll, ymax = ul), width = 0.2, size = 0.2, color = "black") + 
+  ylab("Odds of outcome") +
+  xlab("level of exertion")
+```
+
+Now, we will introduce another useful library, that has a function that can work like **mhodds** of STATA. This library called **vcd** and the function is `loddsratio()`. You have to create a table with the variables of interest and then pass it.
+
+```{r}
+odds1 <- vcd::loddsratio(table3, log = F, stratum = level, ref = 1) %>%
+  coef()
+
+confs <- vcd::loddsratio(table3, log = F, stratum = level, ref = 1) %>%
+  confint()
+
+mhodds <- cbind(odds1, confs)
+colnames(mhodds)[1] <- 'Odds Ratio'
+row.names(mhodds) <- c('1 vs 0', '2 vs 0', '3 vs 0')
+
+mhodds %>%
+  kbl(digits = 3) %>%
+  kable_styling()
+```
+
+Below we created a list with all the possible $X^2$ tests of the ORs.
+
+```{r}
+chi <- xtabs(~ level + d, data = data3)
+
+chis <- vector('list')
+
+for (i in 2:nrow(chi)) {
+  chis[[i]] <-
+    chi[c(1, i), ] %>% 
+    chisq.test(correct = F)
+}
+# first element is null due to comparisons (we do not want 0 vs 0)
+chis <- chis[-1]
+names(chis) <- c('1 vs 0', '2 vs 0', '3 vs 0')
+
+chis
+```
+
+From now on, in the lab/class we built models with the weighted data, but we have converted ours in long format so we are not going to proceed any further, because the procedure is already covered in this and in the previous labs, regarding model creation and LR tests.
