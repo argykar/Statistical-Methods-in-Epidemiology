@@ -1,0 +1,444 @@
+---
+title: "Statistical Methods in Epidemiology - Lab 7"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+always_allow_html: true
+---
+## Table of Contents
+1. [Matched studies](#matched)
+    + [Endometrial cancer, 1:1 matched sets](#1:1)
+    + [Endometrial cancer, 1:4 matched sets](#1:4)
+2. [Conditional logistic regression](#conditional)
+3. [Conditional vs. unconditional logistic](#vs)
+
+
+# Matched case-control studies 
+
+In this lab, we are going to display some ways to analyse data from matched case control studies in R. As usual, we'll begin by importing the libraries that are going to be used.
+
+
+```{r, message = FALSE, warning = FALSE}
+library(haven)
+library(kableExtra)
+library(survival)
+library(tidyverse)
+library(lmtest)
+library(Epi)
+```
+
+
+```{r, echo = FALSE, warning=FALSE, results=FALSE, message=FALSE}
+r_table <- function(model) {
+  if (is(model, "glm") == TRUE) {
+    if (family(model)$family == "poisson") {
+      modification <- 
+        model %>% 
+        summary() %>% 
+        coefficients() %>% 
+        as.data.frame() %>% 
+        slice(-1) %>% 
+        rownames_to_column(var = "Predictors") %>% 
+        mutate(IRR = exp(Estimate), 
+               Std_Err = IRR * `Std. Error`, 
+               pval = sprintf("%1.3f", `Pr(>|z|)`),
+               pvalue = ifelse(pval < 0.001, '<0.001', pval)) %>%
+        select(Predictors, 
+               IRR, Std_Err, 
+               "z_value" = `z value`, 
+               "P-Value" = pvalue)
+      
+      if (nrow(modification) > 1) {
+        final_table <- bind_cols(modification, 
+                                 LL = exp(confint.default(model)[-1, ])[, 1], 
+                                 UL = exp(confint.default(model)[-1, ])[, 2])
+        } else {
+          final_table <- bind_cols(modification, 
+                                   LL = exp(confint.default(model)[-1, ])[1], 
+                                   UL = exp(confint.default(model)[-1, ])[2])
+        }
+      } else if (family(model)$family == "binomial") {
+              modification <- 
+        model %>% 
+        summary() %>% 
+        coefficients() %>% 
+        as.data.frame() %>% 
+        slice(-1) %>% 
+        rownames_to_column(var = "Predictors") %>% 
+        mutate(OR = exp(Estimate), 
+               Std_Err = OR * `Std. Error`, 
+               pval = sprintf("%1.3f", `Pr(>|z|)`),
+               pvalue = ifelse(pval < 0.001, '<0.001', pval)) %>%
+        select(Predictors, 
+               OR, Std_Err, 
+               "z_value" = `z value`, 
+               "P-Value" = pvalue)
+      
+      if (nrow(modification) > 1) {
+        final_table <- bind_cols(modification, 
+                                 LL = exp(confint.default(model)[-1, ])[, 1], 
+                                 UL = exp(confint.default(model)[-1, ])[, 2])
+        } else {
+          final_table <- bind_cols(modification, 
+                                   LL = exp(confint.default(model)[-1, ])[1], 
+                                   UL = exp(confint.default(model)[-1, ])[2]) 
+        } 
+      } else {
+        stop("Family of the model is not Poisson or Binomial")
+        }
+    } else {
+      stop("Object is not of class glm")
+      } 
+    return(final_table) 
+}
+```
+## I. Matched studies <a name='matched'></a>
+
+We are going to use two datasets, *bdendo* and *bdendo11*. The first one comes from the study of endometrial cancer and the medical use of estrogens, described in Breslow and Day (1980). Each case was matched to 4 control women who were alive and living in the retirement community at the time the case was diagnosed, who were born within one year of the case, had the same marital status and who had entered the community at approximately the same time. The variable **age3** codes subjects in three board groups (55-64, 65-74 and 75+) using the age of the case in each set, so subjects in the same matched set always have the same value for **age3**. The variable **agegrp** does the same thing for 5 year age groups. Variable **d** indicates the case-control status (1:case, 0:control), while variable **est** denotes the use of estrogens. The second dataset is a subset of the first one, and in particular for each case one control woman has been chosen (1:1 format). We'll load both of them and create factors for the categorical variables. 
+
+```{r}
+data1 <- read_dta("bdendo11.dta")
+# factoring
+data1$gall <- factor(data1$gall, labels = c("No", "Yes"))
+data1$hyp <- factor(data1$hyp, labels = c("No", "Yes"))
+data1$ob <- factor(data1$ob, labels = c("No", "Yes"))
+data1$est <- factor(data1$est, labels = c("No", "Yes"))
+data1$dur <- factor(data1$dur, ordered = TRUE)
+data1$non <- factor(data1$non, labels = c("No", "Yes"))
+data1$cest <- factor(data1$cest, ordered = TRUE)
+data1$agegrp <- factor(data1$agegrp, labels = c("55-59", "60-64", "65-69", "70-74", "75-79", "80-84"))
+data1$age3 <- factor(data1$age3, labels = c("<64", "65-75", "75+"))
+
+
+data2 <- read_dta("bdendo.dta")
+# factoring
+data2$gall <- factor(data2$gall, labels = c("No", "Yes"))
+data2$hyp <- factor(data2$hyp, labels = c("No", "Yes"))
+data2$ob <- factor(data2$ob, labels = c("No", "Yes"))
+data2$est <- factor(data2$est, labels = c("No", "Yes"))
+data2$dur <- factor(data2$dur, ordered = TRUE)
+data2$non <- factor(data2$non, labels = c("No", "Yes"))
+data2$cest <- factor(data2$cest, ordered = TRUE)
+data2$agegrp <- factor(data2$agegrp, labels = c("55-59", "60-64", "65-69", "70-74", "75-79", "80-84"))
+data2$age3 <- factor(data2$age3, labels = c("<64", "65-75", "75+"))
+
+
+# simple function for not writing all the time kable functions
+# default for digits is 3, but you can modify if you want more or less
+display <- function(x, digits = 3) {
+  x %>%
+    kable(digits = digits) %>%
+    kable_styling()
+}
+```
+
+### i) Endometrial cancer, 1:1 matched sets <a name='1:1'></a>
+
+In this section we'll work with **bdendo11** dataset. First, we'll examine the effect of estrogen with Mantel - Haenszel. We'll work with `mantelhaen.test()` function. In the previous lab, we mainly used `mhor()`, as it displays the odds ratios of every stratum. Here, where strata are defined by the sets, this information has no use and `mantelhaen.test()` does not provide such information, so it works as we want. In the code below, we are extracting the pieces we want from an object created by `mantelhaen.test()` in order to present them in a table.
+
+```{r}
+test1 <- with(data1, mantelhaen.test(table(d, est, set), correct = FALSE))
+
+bind_cols("OR" = test1$estimate, 
+           "chi2(1)" = test1$statistic, 
+           "p>chi2" = test1$p.value,
+           "Lower_l" = test1$conf.int[1],
+          "Upper_l" = test1$conf.int[2]) %>%
+  display(digits = 4)
+```
+
+The Mantel - Haenszel estimate is the ratio of the number of matched pairs where only the case is exposed to the number of matched pairs where only the control is exposed. We can verify it by the code below. Here, we are grouping by set (and **age3**, but since **age3** remains constant within set it is like grouping only by set, we just want to have the age available in the dataframe below) and we are creating two variables, one that counts the total number of exposed people within sets (can be 0, 1, or 2) and one that counts the total number of exposed cases within sets (can be 0 or 1). By keeping only the sets that contain exactly one exposed person, we are essentially keeping the sets where either have exactly one exposed case or exactly one exposed control. Thus, in the final dataset, **Est_ca** is equal to one in sets where only the case is exposed and equal to zero in sets where only the control is exposed.
+
+```{r, warning = FALSE, message = FALSE}
+m_pairs <- data1 %>%
+  group_by(set, age3) %>%
+  summarise(Est = sum((est == "Yes")), 
+            Est_Ca = sum((est == "Yes") & (d == 1))) %>% 
+  filter(Est == 1)
+
+sum(m_pairs$Est_Ca == 1) / sum(m_pairs$Est_Ca == 0)
+```
+
+
+There is no use controlling for **age3** as people are matched on age, but we can check whether age modifies the effect of estrogen. So, we'll calculate Mantel - Haenszel estimate of odds ratio controlled for set in every stratum of **age3**. We'll accomplish it by applying `mantelhaen.test()` to every level of **age3** through `group_map()`. Note the use of `sapply()` that helps us extract the same information as before for every level of **age3**.
+
+```{r}
+test2 <- data1 %>%
+  group_by(age3) %>%
+  group_map(~ with(.x, mantelhaen.test(table(d, est, set), correct = FALSE)))
+
+bind_cols("Age" = levels(data1$age3),
+           "OR" = sapply(1:3, function(i) test2[[i]]$estimate),
+           "chi2(1)" = sapply(1:3, function(i) test2[[i]]$statistic),
+           "p>chi2" = sapply(1:3, function(i) test2[[i]]$p.value),
+           "Lower_l" = sapply(1:3, function(i) test2[[i]]$conf.int[1]),
+           "Upper_l" = sapply(1:3, function(i) test2[[i]]$conf.int[2])) %>%
+  display(digits = 4)
+
+```
+
+The chi-square test of heterogeneity of odds ratios between the strata of **age3** is in fact, in this case, a Pearson Chi-square performed only in the sets which have exactly one exposed case or exactly one exposed control, by tabulating the age and the variable that shows whether the case or the control is exposed. So, we are going to use the **m_pairs** dataframe that we created before.
+
+```{r, warning = FALSE, message = FALSE}
+with(m_pairs, chisq.test(Est_Ca, age3))
+```
+
+Afterwards, we'll try to control for hypertension. As `mantelhaen.test()` does not support stratification by more than one variable, we have to manually create a variable from the levels of **set** and **hyp**. We will use `interaction()`, which automatically does that work, and specifying the argument *drop = TRUE*, unused combinations of levels are dropped. Also, it's necessary to drop sets in which case and control have different hypertension, as it will result in strata of set and hypertension with a single observation and `mantelhaen.test()` supports only strata with more than one observation. The forementioned tasks will be executed with the aid of **Tidyverse** tools. 
+
+```{r}
+
+help_data <- data1 %>% 
+  group_by(set, hyp) %>% 
+  filter(n() > 1) %>% 
+  ungroup() %>% 
+  mutate(set_hyp = interaction(factor(set), hyp, drop = TRUE))
+  
+test3 <- with(help_data, mantelhaen.test(d, est, set_hyp, correct = FALSE))
+
+bind_cols("OR" = test3$estimate, 
+           "chi2(1)" = test3$statistic, 
+           "p>chi2" = test3$p.value,
+           "Lower_l" = test3$conf.int[1],
+          "Upper_l" = test3$conf.int[2]) %>% 
+  display(digits = 5)
+
+
+```
+
+### ii) Endometrial cancer, 1:4 matched sets <a name='1:4'></a>
+
+Here, we'll work with the full dataset (i.e 1:4 matched sets) and we'll answer the same questions as before. With the code below, we are obtaining the Mantel - Haenszel estimate of the Odds Ratio for the use of estrogens.
+
+```{r}
+test4 <- with(data2, mantelhaen.test(table(d, est, set), correct = FALSE))
+
+bind_cols("OR" = test4$estimate, 
+           "chi2(1)" = test4$statistic, 
+           "p>chi2" = test4$p.value,
+           "Lower_l" = test4$conf.int[1],
+          "Upper_l" = test4$conf.int[2]) %>% 
+  display(digits = 5)
+```
+
+Next, we are calculating the Mantel - Haenszel estimate of the Odds Ratio for the use of estrogens in each category of **age3**.
+
+```{r, warning = FALSE, message = FALSE}
+
+test5 <- data2 %>%
+  group_by(age3) %>%
+  group_map(~ with(.x, mantelhaen.test(table(d, est, set), correct = FALSE)))
+
+bind_cols("Age" = levels(data2$age3),
+           "OR" = sapply(1:3, function(i) test5[[i]]$estimate),
+           "chi2(1)" = sapply(1:3, function(i) test5[[i]]$statistic),
+           "p>chi2" = sapply(1:3, function(i) test5[[i]]$p.value),
+           "Lower_l" = sapply(1:3, function(i) test5[[i]]$conf.int[1]),
+           "Upper_l" = sapply(1:3, function(i) test5[[i]]$conf.int[2])) %>%
+  display(digits = 4)
+```
+
+Finally, we are going to obtain the Mantel - Haenszel estimate of the Odds Ratio for the use of estrogens adjusted for hypertension.
+
+```{r}
+help_data_II <- data2 %>% 
+  group_by(set, hyp) %>% 
+  filter(n() > 1) %>% 
+  ungroup() %>% 
+  mutate(set_hyp = interaction(factor(set), hyp, drop = TRUE))
+  
+test6 <- with(help_data_II, mantelhaen.test(d, est, set_hyp, correct = FALSE))
+
+
+bind_cols("OR" = test6$estimate, 
+           "chi2(1)" = test6$statistic, 
+           "p>chi2" = test6$p.value,
+           "Lower_l" = test6$conf.int[1],
+          "Upper_l" = test6$conf.int[2]) %>% 
+  display(digits = 5)
+```
+
+## II. Conditional logistic regression <a name='conditional'></a>
+
+In this section, we are going to use conditional logistic regression for the analysis. One function which we can use for that purpose is `clogit()` from **survival** package, which has similar syntax with the rest of the functions we have seen that fit models. The *formula* argument has to be in the form of **y ~ x + strata(matched.set)**. The *matched.set* variable has to be numeric. First, we'll work with the 1:1 matched dataset. We are going to examine the effect of estrogen.
+
+For not repeating the same code chunk, below we created a function which make the results appear in a nice table format like STATA. We added an option for exponentiating the coefficients if you'd like. Default option is **exp = TRUE**. We use `na.omit()`, so as not to include lines that contain *NAs*, because of the matching variables coefficients.
+
+```{r}
+table_stata <- function(model, digits = 3, exp = TRUE) {
+  df <- as.data.frame(summary(model)$coefficients) %>%
+    rownames_to_column(var = "Predictors") %>%
+    bind_cols(as.data.frame(summary(model)$conf.int) %>% select(-`exp(coef)`)) %>%
+    mutate(SE = `exp(coef)` * `se(coef)`,
+           lower = `coef` - 1.96 * `se(coef)`,
+           upper = `coef` + 1.96 * `se(coef)`) %>%
+    na.omit()
+  
+    {if (exp)
+      df %>% select(Predictors,
+             'OR' = `exp(coef)`,
+             SE,
+             `z`,
+             `Pr(>|z|)`,
+             `lower .95`,
+             `upper .95`)
+    else
+      df %>% select(
+        Predictors,
+        'Coef' = `coef`,
+        'se' = `se(coef)`,
+        `z`,
+        `Pr(>|z|)`,
+        lower,
+        upper
+      )
+  } %>%
+    display(digits = digits)
+}
+```
+
+
+```{r}
+fit1 <- clogit(d ~ est + strata(set), data1)
+
+table_stata(fit1)
+```
+
+Next, we are going to examine whether the effect of age is modified by **age3**. To do this, first we have to fit a model with an interaction of **est** and **age3**. However, age is the matching variable, so there will be no calculations for the main effects of **age3**. Subsequently, we are performing a likelihood ratio test to test the interaction parameters.
+
+```{r}
+fit2 <- clogit(d ~ est * age3 + strata(set), data1)
+
+table_stata(fit2)
+
+lrtest(fit1, fit2) %>%
+  display()
+```
+
+Same for variable **age**, which is continuous (age is the matching variable, but in its continuous form there are a few differences in its values among people of one set, so we have main-effects estimation).
+
+```{r}
+fit3 <- clogit(d ~ est + age + strata(set), data1)
+
+table_stata(fit3)
+
+fit4 <- clogit(d ~ est*age + strata(set), data1)
+
+table_stata(fit4)
+
+lrtest(fit3, fit4) %>%
+  display()
+```
+
+We are now going to adjust for hypertension. Below we can see that the effect is increased, however not a statistically significant change on hypertension.
+```{r}
+fit5 <- clogit(d ~ est + hyp + strata(set), data1)
+
+table_stata(fit5)
+```
+
+Check for interaction between hypertension and estrogen. We are going to test for the significance of the interaction using LR test with the models **fit5** and **fit6**
+
+```{r}
+fit6 <- clogit(d ~ est * hyp + strata(set), data1)
+
+table_stata(fit6)
+
+lrtest(fit5, fit6) %>%
+  display()
+```
+
+Results from the LR test show that the interaction is not significant and hence dropped of the model.
+
+From now on, we will use the **bdendo.dta** file. We will use matching 1:4 but this time with models and not with mantel-haenzel tests. At the beginning, we factored every variable needed to be factored and now we are ready to proceed with the analysis.
+
+First let's take a look at our data.
+```{r}
+data2 %>%
+  select(set, d, est, age) %>%
+  arrange(set) %>%
+  head(10) %>%
+  display()
+```
+
+As before, we create a fit object conducting a conditional logistic with variables estrogen and groups the set variable.
+
+```{r}
+fit11 <- clogit(d ~ est + strata(set), data2)
+
+table_stata(fit11, exp = FALSE)
+# not meaningful since set is the matching variable and we can't get the estimates
+fit12 <- clogit(d ~ age3 + strata(set), data2)
+```
+
+We are now creating models with interaction effects and without between the variables specified in the models as shown below. Then we are testing the interaction significance with LR tests.
+
+```{r}
+fit13 <- clogit(d ~ est * age3 + strata(set), data2)
+
+table_stata(fit13, exp = FALSE)
+
+fit14 <- clogit(d ~ est + age3 + strata(set), data2)
+
+table_stata(fit14, exp = FALSE)
+
+lrtest(fit14, fit13) %>%
+  display()
+```
+
+```{r}
+fit15 <- clogit(d ~ est * age + strata(set), data2)
+
+table_stata(fit15)
+
+fit16 <- clogit(d ~ est + age + strata(set), data2)
+
+table_stata(fit16)
+
+lrtest(fit15, fit16) %>%
+  display()
+```
+
+```{r}
+fit17 <- clogit(d ~ est + hyp + strata(set), data2)
+
+table_stata(fit17)
+
+fit18 <- clogit(d ~ est * hyp + strata(set), data2)
+
+table_stata(fit18)
+
+lrtest(fit17, fit18) %>%
+  display()
+```
+
+## III. Conditional vs. unconditional logistic <a name='vs'></a>
+
+```{r}
+data3 <- read_dta('lep.dta')
+data3$d <- factor(data3$d, levels = c("1", "0"), labels = c("Cases", "Controls"))
+data3$sex <- factor(data3$sex, labels = c("Male", "Female"))
+data3$bcg <- factor(data3$bcg, levels = c("1", "0"), labels = c("Present", "Absent"))
+
+data3$cage <- factor(data3$age, labels = c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34"))
+
+data3$d <- fct_relevel(data3$d, "Controls")
+data3$bcg <- fct_relevel(data3$bcg, "Absent")
+
+fit31 <- glm(d ~ bcg + cage, data3, family = binomial)
+# function from previous labs
+r_table(fit31) %>% 
+  display()
+```
+
+
+Now, we create a variable that is 1 for every subject and we are going to declare it the matching variable. Next, we proceed with conditional logistic regression similar with the model **fit31** but with matching.
+
+```{r}
+data3$grp <- 1 
+
+model <- clogistic(d ~ bcg + cage, strata = grp, data3) 
+
+model
+```
+
+Here the matching variable **grp** is 1 for everyone, so the effect of matching is neutral. In such case, both unconditional and conditional logistic regression lead to approximately same results and matching can be ignored.
