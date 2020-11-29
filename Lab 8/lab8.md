@@ -3,8 +3,8 @@ Statistical Methods in Epidemiology - Lab8
 
 # Matched Case - Control Studies: The Salmonella Typhimurium dataset
 
-On today’s practical, *typhi* dataset is going to be examined. It’s
-about a matched case - control study, set up by the Danish Zoonosis
+On the practical that follows, *typhi* dataset is going to be examined.
+It’s about a matched case - control study, set up by the Danish Zoonosis
 Centre in order to find the sources that led to a large number of
 Salmonella Typhimurium cases in the fall of 1996 in Fyn County in
 Denmark. Each case was matched to two controls of the same age, sex and
@@ -14,8 +14,8 @@ created by us for the labs’ needs. It currently contains all the labs’
 datasets, along with a few functions that help us present the results of
 the analysis. You can download it by typing:
 `devtools::install_github("argykar/SME")`(package **devtools** has to be
-installed first). Now, we are going to load the libraries and the
-dataset that will be used throughout the lab and create factors for the
+installed first). Now, we are going to load the libraries that will be
+used throughout the lab, the dataset and create factors for the
 categorical variables.
 
 ``` r
@@ -186,8 +186,8 @@ the model for each of them, so we use `lapply()`. What `bquote()` and
 `eval()` functions do in this case, is not obvious. We could have
 avoided them, as, in this case, our results would not be
 distinguishable. However, let’s describe our idea. Every fitted model
-has a *Call* component (e.g fit1$call). Had we not use `bquote()`, the
-clogit call for each of the above variables would be
+has a *Call* component (e.g fit\_pork$call). Had we not use `bquote()`,
+the clogit call for each of the above variables would be
 *clogit(as.formula(paste0(“case \~”, var, “+ strata(set)”)), data =
 typhi)* and that is at least uninformative for someone that would notice
 it. By using `bquote` the call, e.g for *veg* variable, becomes
