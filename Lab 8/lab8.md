@@ -1080,9 +1080,9 @@ plant7Yes
 The univariate analysis indicate that only fruit consumption and meat
 consumption from plant7 are potentially significant predictors. As
 regards fruit consumption, we found out that it has a protective effect.
-More specifically, the odds of salmonella is 1 - exp(-1.8119) =
--15.3337% lower for people who eat fruits compared with people who do
-not include fruits in their daily nutrition.
+More specifically, the odds of salmonella is 1 - exp(-1.8119) = 84%
+lower for people who eat fruits compared with people who do not include
+fruits in their daily nutrition.
 
 Next, we will investigate whether an interaction between *fruit* and
 *plant7* exists. We will fit a model that includes the main effects of

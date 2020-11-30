@@ -95,7 +95,7 @@ fits[[8]] %>%
 
 ```
 
-The univariate analysis indicate that only fruit consumption and meat consumption from plant7 are potentially significant predictors. As regards fruit consumption, we found out that it has a protective effect. More specifically, the odds of salmonella is 1 - exp(`r round(coef(fits[[6]]), digits = 4)`) = `r round((1 - exp(coef(fits[[6]])) * 100), digits = 4)`% lower for people who eat fruits compared with people who do not include fruits in their daily nutrition.
+The univariate analysis indicate that only fruit consumption and meat consumption from plant7 are potentially significant predictors. As regards fruit consumption, we found out that it has a protective effect. More specifically, the odds of salmonella is 1 - exp(`r round(coef(fits[[6]]), digits = 4)`) = `r round((1 - exp(coef(fits[[6]])))*100)`% lower for people who eat fruits compared with people who do not include fruits in their daily nutrition.
 
 Next, we will investigate whether an interaction between *fruit* and *plant7* exists. We will fit a model that includes the main effects of them, as well as one more including an interaction between them.
 
