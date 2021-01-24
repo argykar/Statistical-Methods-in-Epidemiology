@@ -256,12 +256,14 @@ They are calculated as:
 " 
 RERI = OR_{A=1, B=1} - OR_{A=1, B=0} - OR_{A=0, B=1} + 1
 ")  
+
   
 ![&#10;SI = \\frac{OR\_{A=1, B=1} - 1}{OR\_{A=1, B=0} + OR\_{A=0, B=1}
 - 2}&#10;](https://latex.codecogs.com/png.latex?%5Cdpi{100}%0ASI%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%20-%201%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%20%2B%20OR_%7BA%3D0%2C%20B%3D1%7D%20-%202%7D%0A
 "
 SI = \\frac{OR_{A=1, B=1} - 1}{OR_{A=1, B=0} + OR_{A=0, B=1} - 2}
 ")  
+
   
 ![&#10;ROR = \\frac{OR\_{A=1, B=1}}{OR\_{A=1, B=0}\*OR\_{A=0,
 B=1}}&#10;](https://latex.codecogs.com/png.latex?%5Cdpi{100}%0AROR%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%2AOR_%7BA%3D0%2C%20B%3D1%7D%7D%0A
