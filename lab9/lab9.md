@@ -251,15 +251,17 @@ specifically:
 They are calculated as:
 
   
-![&#10;RERI = OR\_{A=1, B=1} - OR\_{A=1, B=0} - OR\_{A=0, B=1}
-+ 1&#10;SI = \\frac{OR\_{A=1, B=1} - 1}{OR\_{A=1, B=0} + OR\_{A=0, B=1}
-- 2}&#10;ROR = \\frac{OR\_{A=1, B=1}}{OR\_{A=1, B=0}\*OR\_{A=0,
-B=1}}&#10;](https://latex.codecogs.com/png.latex?%5Cdpi{100}%0ARERI%20%3D%20OR_%7BA%3D1%2C%20B%3D1%7D%20-%20OR_%7BA%3D1%2C%20B%3D0%7D%20-%20OR_%7BA%3D0%2C%20B%3D1%7D%20%2B%201%0ASI%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%20-%201%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%20%2B%20OR_%7BA%3D0%2C%20B%3D1%7D%20-%202%7D%0AROR%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%2AOR_%7BA%3D0%2C%20B%3D1%7D%7D%0A
-"
-RERI = OR_{A=1, B=1} - OR_{A=1, B=0} - OR_{A=0, B=1} + 1
-SI = \\frac{OR_{A=1, B=1} - 1}{OR_{A=1, B=0} + OR_{A=0, B=1} - 2}
-ROR = \\frac{OR_{A=1, B=1}}{OR_{A=1, B=0}*OR_{A=0, B=1}}
-")  
+![RERI = OR\_{A=1, B=1} - OR\_{A=1, B=0} - OR\_{A=0, B=1}
++ 1](https://latex.codecogs.com/png.latex?%5Cdpi{100}RERI%20%3D%20OR_%7BA%3D1%2C%20B%3D1%7D%20-%20OR_%7BA%3D1%2C%20B%3D0%7D%20-%20OR_%7BA%3D0%2C%20B%3D1%7D%20%2B%201
+"RERI = OR_{A=1, B=1} - OR_{A=1, B=0} - OR_{A=0, B=1} + 1")  
+  
+![SI = \\frac{OR\_{A=1, B=1} - 1}{OR\_{A=1, B=0} + OR\_{A=0, B=1}
+- 2}](https://latex.codecogs.com/png.latex?%5Cdpi{100}SI%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%20-%201%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%20%2B%20OR_%7BA%3D0%2C%20B%3D1%7D%20-%202%7D
+"SI = \\frac{OR_{A=1, B=1} - 1}{OR_{A=1, B=0} + OR_{A=0, B=1} - 2}")  
+  
+![ROR = \\frac{OR\_{A=1, B=1}}{OR\_{A=1, B=0}\*OR\_{A=0,
+B=1}}](https://latex.codecogs.com/png.latex?%5Cdpi{100}ROR%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%2AOR_%7BA%3D0%2C%20B%3D1%7D%7D
+"ROR = \\frac{OR_{A=1, B=1}}{OR_{A=1, B=0}*OR_{A=0, B=1}}")  
 
 They are, essentialy, nonlinear transformations of the coefficients of
 *fit1*, so we are going to use `nlConfint()` function from
