@@ -248,7 +248,9 @@ specifically:
     on additive scale)
   - Ratio of Odds Ratios (interaction on multiplicative scale)
 
-They are calculated as:   
+They are calculated as:
+
+  
 ![ &#10;RERI = OR\_{A=1, B=1} - OR\_{A=1, B=0} - OR\_{A=0, B=1}
 + 1&#10;](https://latex.codecogs.com/png.latex?%5Cdpi{100}%20%0ARERI%20%3D%20OR_%7BA%3D1%2C%20B%3D1%7D%20-%20OR_%7BA%3D1%2C%20B%3D0%7D%20-%20OR_%7BA%3D0%2C%20B%3D1%7D%20%2B%201%0A
 " 
