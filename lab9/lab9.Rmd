@@ -1,9 +1,11 @@
 ---
 title: "Statistical Methods in Epidemiology - Lab9"
-output: github_document
+output: 
+  github_document:
+    pandoc_args: --webtex=https://latex.codecogs.com/png.latex?%5Cdpi{100}
 editor_options: 
   chunk_output_type: console
-always_allow_html: true 
+always_allow_html: true
 ---
 
 # Interactions
