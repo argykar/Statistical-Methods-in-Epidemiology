@@ -46,222 +46,118 @@ r_table(fit1) %>%
 ```
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
-
 <thead>
-
 <tr>
-
 <th style="text-align:left;">
-
 Predictors
-
 </th>
-
 <th style="text-align:right;">
-
 OR
-
 </th>
-
 <th style="text-align:right;">
-
 Std\_Err
-
 </th>
-
 <th style="text-align:right;">
-
 z\_value
-
 </th>
-
 <th style="text-align:left;">
-
 P-Value
-
 </th>
-
 <th style="text-align:right;">
-
 LL
-
 </th>
-
 <th style="text-align:right;">
-
 UL
-
 </th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 <tr>
-
 <td style="text-align:left;">
-
-bmi\_nomd\>30.\>=5
-
+bmi\_nomd&gt;30.&gt;=5
 </td>
-
 <td style="text-align:right;">
-
 2.611
-
 </td>
-
 <td style="text-align:right;">
-
 1.982
-
 </td>
-
 <td style="text-align:right;">
-
 1.264
-
 </td>
-
 <td style="text-align:left;">
-
 0.206
-
 </td>
-
 <td style="text-align:right;">
-
 0.589
-
 </td>
-
 <td style="text-align:right;">
-
 11.565
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
-bmi\_nomd\<=30.\<5
-
+bmi\_nomd&lt;=30.&lt;5
 </td>
-
 <td style="text-align:right;">
-
 1.547
-
 </td>
-
 <td style="text-align:right;">
-
 1.463
-
 </td>
-
 <td style="text-align:right;">
-
 0.461
-
 </td>
-
 <td style="text-align:left;">
-
 0.645
-
 </td>
-
 <td style="text-align:right;">
-
 0.242
-
 </td>
-
 <td style="text-align:right;">
-
 9.878
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
-bmi\_nomd\>30.\<5
-
+bmi\_nomd&gt;30.&lt;5
 </td>
-
 <td style="text-align:right;">
-
 3.787
-
 </td>
-
 <td style="text-align:right;">
-
 2.977
-
 </td>
-
 <td style="text-align:right;">
-
 1.694
-
 </td>
-
 <td style="text-align:left;">
-
 0.090
-
 </td>
-
 <td style="text-align:right;">
-
 0.811
-
 </td>
-
 <td style="text-align:right;">
-
 17.681
-
 </td>
-
 </tr>
-
 </tbody>
-
 </table>
 
 We’ll calculate and examine three indices for interaction. More
 specifically:
 
-  - Relative Excess Risk for Interaction and Synergy Index (interaction
+-   Relative Excess Risk for Interaction and Synergy Index (interaction
     on additive scale)
-  - Ratio of Odds Ratios (interaction on multiplicative scale)
+-   Ratio of Odds Ratios (interaction on multiplicative scale)
 
 They are calculated as:
 
-  
-![RERI = OR\_{A=1, B=1} - OR\_{A=1, B=0} - OR\_{A=0, B=1}
-+ 1](https://latex.codecogs.com/png.latex?%5Cdpi{100}RERI%20%3D%20OR_%7BA%3D1%2C%20B%3D1%7D%20-%20OR_%7BA%3D1%2C%20B%3D0%7D%20-%20OR_%7BA%3D0%2C%20B%3D1%7D%20%2B%201
-"RERI = OR_{A=1, B=1} - OR_{A=1, B=0} - OR_{A=0, B=1} + 1")  
-  
-![SI = \\frac{OR\_{A=1, B=1} - 1}{OR\_{A=1, B=0} + OR\_{A=0, B=1}
-- 2}](https://latex.codecogs.com/png.latex?%5Cdpi{100}SI%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%20-%201%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%20%2B%20OR_%7BA%3D0%2C%20B%3D1%7D%20-%202%7D
-"SI = \\frac{OR_{A=1, B=1} - 1}{OR_{A=1, B=0} + OR_{A=0, B=1} - 2}")  
-  
-![ROR = \\frac{OR\_{A=1, B=1}}{OR\_{A=1, B=0}\*OR\_{A=0,
-B=1}}](https://latex.codecogs.com/png.latex?%5Cdpi{100}ROR%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%2AOR_%7BA%3D0%2C%20B%3D1%7D%7D
-"ROR = \\frac{OR_{A=1, B=1}}{OR_{A=1, B=0}*OR_{A=0, B=1}}")  
+![RERI = OR\_{A=1, B=1} - OR\_{A=1, B=0} - OR\_{A=0, B=1} + 1](https://latex.codecogs.com/png.latex?%5Cdpi{100}RERI%20%3D%20OR_%7BA%3D1%2C%20B%3D1%7D%20-%20OR_%7BA%3D1%2C%20B%3D0%7D%20-%20OR_%7BA%3D0%2C%20B%3D1%7D%20%2B%201 "RERI = OR_{A=1, B=1} - OR_{A=1, B=0} - OR_{A=0, B=1} + 1")
+
+![SI = \\frac{OR\_{A=1, B=1} - 1}{OR\_{A=1, B=0} + OR\_{A=0, B=1} - 2}](https://latex.codecogs.com/png.latex?%5Cdpi{100}SI%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%20-%201%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%20%2B%20OR_%7BA%3D0%2C%20B%3D1%7D%20-%202%7D "SI = \frac{OR_{A=1, B=1} - 1}{OR_{A=1, B=0} + OR_{A=0, B=1} - 2}")
+
+![ROR = \\frac{OR\_{A=1, B=1}}{OR\_{A=1, B=0}\\cdot OR\_{A=0, B=1}}](https://latex.codecogs.com/png.latex?%5Cdpi{100}ROR%20%3D%20%5Cfrac%7BOR_%7BA%3D1%2C%20B%3D1%7D%7D%7BOR_%7BA%3D1%2C%20B%3D0%7D%5Ccdot%20OR_%7BA%3D0%2C%20B%3D1%7D%7D "ROR = \frac{OR_{A=1, B=1}}{OR_{A=1, B=0}\cdot OR_{A=0, B=1}}")
 
 They are, essentialy, nonlinear transformations of the coefficients of
 *fit1*, so we are going to use `nlConfint()` function from
@@ -285,146 +181,85 @@ data.frame(Index = c("RERI", "SI", "ROR"),
 ```
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
-
 <thead>
-
 <tr>
-
 <th style="text-align:left;">
-
 Index
-
 </th>
-
 <th style="text-align:right;">
-
 Estimate
-
 </th>
-
 <th style="text-align:right;">
-
 Lower\_L
-
 </th>
-
 <th style="text-align:right;">
-
 Upper\_L
-
 </th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 <tr>
-
 <td style="text-align:left;">
-
 RERI
-
 </td>
-
 <td style="text-align:right;">
-
 0.6293
-
 </td>
-
 <td style="text-align:right;">
-
-\-2.4824
-
+-2.4824
 </td>
-
 <td style="text-align:right;">
-
 3.7409
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
 SI
-
 </td>
-
 <td style="text-align:right;">
-
 1.2916
-
 </td>
-
 <td style="text-align:right;">
-
 0.2872
-
 </td>
-
 <td style="text-align:right;">
-
 5.8096
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
 ROR
-
 </td>
-
 <td style="text-align:right;">
-
 0.9377
-
 </td>
-
 <td style="text-align:right;">
-
 0.1284
-
 </td>
-
 <td style="text-align:right;">
-
 6.8474
-
 </td>
-
 </tr>
-
 </tbody>
-
 </table>
 
 We conclude that:
 
-  - The combined effect (relative excess risk) of low MDScale and high
+-   The combined effect (relative excess risk) of low MDScale and high
     BMI is 0.6 more from the sum of the relative excess risks due to a)
     low MDScale but low BMI and b) the presence of high BMI but high
     MDScale (individual effects). So, that is an indication for
     super-additive interaction, but the difference is not significant as
     RERI’s CI contains 0.
 
-  - The combined presence of low MDScale and high BMI results in a 29%
+-   The combined presence of low MDScale and high BMI results in a 29%
     increased excess relative risk, as compared to the excess relative
     risk due to low MDScale but low BMI and the presence of high BMI but
     high MDScale (this is also not significant, as SI’s CI contains 1
     and it’s something we expect as *SI* and *RERI* are equivalent).
 
-  - Obesity and low dedication to Mediterranean diet have
-    sub-multiplicative interaction effect on hypertension (as 0.94 \<
+-   Obesity and low dedication to Mediterranean diet have
+    sub-multiplicative interaction effect on hypertension (as 0.94 &lt;
     1). However, the 95% CI is (0.13 , 6.85), which includes 1. Thus, we
     cannot reject the null hypothesis of no multiplicative interaction.
     In this case, we conclude that the effects do not deviate from
@@ -446,199 +281,102 @@ r_table(fit2) %>%
 ```
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
-
 <thead>
-
 <tr>
-
 <th style="text-align:left;">
-
 Predictors
-
 </th>
-
 <th style="text-align:right;">
-
 OR
-
 </th>
-
 <th style="text-align:right;">
-
 Std\_Err
-
 </th>
-
 <th style="text-align:right;">
-
 z\_value
-
 </th>
-
 <th style="text-align:left;">
-
 P-Value
-
 </th>
-
 <th style="text-align:right;">
-
 LL
-
 </th>
-
 <th style="text-align:right;">
-
 UL
-
 </th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 <tr>
-
 <td style="text-align:left;">
-
-bmi\>30
-
+bmi&gt;30
 </td>
-
 <td style="text-align:right;">
-
 2.611
-
 </td>
-
 <td style="text-align:right;">
-
 1.982
-
 </td>
-
 <td style="text-align:right;">
-
 1.264
-
 </td>
-
 <td style="text-align:left;">
-
 0.206
-
 </td>
-
 <td style="text-align:right;">
-
 0.589
-
 </td>
-
 <td style="text-align:right;">
-
 11.565
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
-nomd\<5
-
+nomd&lt;5
 </td>
-
 <td style="text-align:right;">
-
 1.547
-
 </td>
-
 <td style="text-align:right;">
-
 1.463
-
 </td>
-
 <td style="text-align:right;">
-
 0.461
-
 </td>
-
 <td style="text-align:left;">
-
 0.645
-
 </td>
-
 <td style="text-align:right;">
-
 0.242
-
 </td>
-
 <td style="text-align:right;">
-
 9.878
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
-bmi\>30:nomd\<5
-
+bmi&gt;30:nomd&lt;5
 </td>
-
 <td style="text-align:right;">
-
 0.938
-
 </td>
-
 <td style="text-align:right;">
-
 0.951
-
 </td>
-
 <td style="text-align:right;">
-
-\-0.063
-
+-0.063
 </td>
-
 <td style="text-align:left;">
-
 0.949
-
 </td>
-
 <td style="text-align:right;">
-
 0.128
-
 </td>
-
 <td style="text-align:right;">
-
 6.847
-
 </td>
-
 </tr>
-
 </tbody>
-
 </table>
 
 In this case, instead of using `nlConfint()` as before, we can use
@@ -655,127 +393,66 @@ int$dframe %>%
 ```
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
-
 <thead>
-
 <tr>
-
 <th style="text-align:left;">
-
 Measures
-
 </th>
-
 <th style="text-align:right;">
-
 Estimates
-
 </th>
-
 <th style="text-align:right;">
-
 CI.ll
-
 </th>
-
 <th style="text-align:right;">
-
 CI.ul
-
 </th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 <tr>
-
 <td style="text-align:left;">
-
 Multiplicative scale
-
 </td>
-
 <td style="text-align:right;">
-
 0.9377
-
 </td>
-
 <td style="text-align:right;">
-
 0.1284
-
 </td>
-
 <td style="text-align:right;">
-
 6.8474
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
 RERI
-
 </td>
-
 <td style="text-align:right;">
-
 0.6293
-
 </td>
-
 <td style="text-align:right;">
-
-\-2.4824
-
+-2.4824
 </td>
-
 <td style="text-align:right;">
-
 3.7409
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:left;">
-
 SI
-
 </td>
-
 <td style="text-align:right;">
-
 1.2916
-
 </td>
-
 <td style="text-align:right;">
-
 0.2872
-
 </td>
-
 <td style="text-align:right;">
-
 5.8096
-
 </td>
-
 </tr>
-
 </tbody>
-
 </table>
 
 The results are identical with the previous approach. However, in both
